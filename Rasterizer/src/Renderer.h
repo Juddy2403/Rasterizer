@@ -34,7 +34,7 @@ namespace dae
 		bool SaveBufferToImage() const;
 
 		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
-		void NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vector2>& vertices_out) const;
+		void NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
 	private:
 		struct BoundingBox {
 
@@ -62,8 +62,6 @@ namespace dae
 		//float* m_pDepthBufferPixels{};
 
 		Camera m_Camera{};
-
-		std::vector<BoundingBox> boundingBox{};
 
 		int m_Width{};
 		int m_Height{};

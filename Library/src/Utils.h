@@ -115,7 +115,7 @@ namespace dae
 					}
 
 					indices.push_back(tempIndices[0]);
-					if (flipAxisAndWinding) 
+					if (flipAxisAndWinding)
 					{
 						indices.push_back(tempIndices[2]);
 						indices.push_back(tempIndices[1]);
@@ -161,7 +161,7 @@ namespace dae
 			{
 				v.tangent = Vector3::Reject(v.tangent, v.normal).Normalized();
 
-				if(flipAxisAndWinding)
+				if (flipAxisAndWinding)
 				{
 					v.position.z *= -1.f;
 					v.normal.z *= -1.f;
@@ -174,22 +174,32 @@ namespace dae
 #endif
 		}
 
-		bool TriangleHitTest(const Vector2& v0, const Vector2& v1, const Vector2& v2, const Vector2& pixelVector)
+		bool TriangleHitTest(const std::vector<Vertex>& vertices, const Vector2& pixelVector,ColorRGB& color)
 		{
-			const Vector2 edge0{ v0,v1 };
-			const Vector2 edge1{ v1,v2 };
-			const Vector2 edge2{ v2,v0 };
-						
-			const Vector2 vertToPixel0{ v0,pixelVector };
-			const Vector2 vertToPixel1{ v1,pixelVector };
-			const Vector2 vertToPixel2{ v2,pixelVector };
+			for (size_t i = 0; i < vertices.size(); i += 3)
+			{
+				const Vector2 edge0{ vertices[i].position,vertices[i + 1].position };
+				const Vector2 edge1{ vertices[i + 1].position,vertices[i + 2].position };
+				const Vector2 edge2{ vertices[i + 2].position,vertices[i].position };
 
-			const float cross0{ Vector2::Cross(edge0,vertToPixel0) };
-			const float cross1{ Vector2::Cross(edge1,vertToPixel1) };
-			if (cross0 * cross1 < 0) return false;
-			const float cross2{ Vector2::Cross(edge2,vertToPixel2) };
+				const Vector2 vertToPixel0{ vertices[i].position,pixelVector };
+				const Vector2 vertToPixel1{ vertices[i + 1].position,pixelVector };
+				const Vector2 vertToPixel2{ vertices[i + 2].position,pixelVector };
 
-			if ((cross0 > 0 && cross1 > 0 && cross2 > 0) || (cross0 < 0 && cross1 < 0 && cross2 < 0)) return true;
+				const float cross0{ Vector2::Cross(edge0,vertToPixel0) };
+				const float cross1{ Vector2::Cross(edge1,vertToPixel1) };
+				if (cross0 * cross1 < 0) return false;
+				const float cross2{ Vector2::Cross(edge2,vertToPixel2) };
+
+				//Calculating each vertices' weight
+				const float doubleArea{ Vector2::Cross(edge0,edge1) };
+				const float W2{ cross0 / doubleArea };
+				const float W0{ cross1 / doubleArea };
+				const float W1{ cross2 / doubleArea };
+
+				color = vertices[i].color * W0 + vertices[i+1].color * W1 + vertices[i+2].color * W2;
+				if ((cross0 > 0 && cross1 > 0 && cross2 > 0) || (cross0 < 0 && cross1 < 0 && cross2 < 0)) return true;
+			}
 			return false;
 		}
 #pragma warning(pop)

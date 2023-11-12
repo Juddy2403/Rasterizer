@@ -46,22 +46,23 @@ void Renderer::Render()
 	SDL_LockSurface(m_pBackBuffer);
 
 	const std::vector<Vertex> vertices_world
-		{ Vertex{Vector3{0.f,2.f,0.f}},
-		Vertex{Vector3{1.f,0.f,0.f}},
-		Vertex{Vector3{-1.f,0.f,0.f}} };
+	{   Vertex{Vector3{0.f,4.f,1.f},ColorRGB{1,0,0}},
+		Vertex{Vector3{3.f,-2.f,1.f },ColorRGB{0,1,0}},
+		Vertex{Vector3{-3.f,-2.f,1.f },ColorRGB{0,0,1}} };
 	std::vector<Vertex> vertices_ndc{};
-	std::vector<Vector2> vertices_rasterized{};
+	std::vector<Vertex> vertices_rasterized{};
 	VertexTransformationFunction(vertices_world, vertices_ndc);
 	NDCToRaster(vertices_ndc, vertices_rasterized);
 
 	float xMin{ float(INT_MAX) }, xMax{ float(INT_MIN) }, yMin{ float(INT_MAX) }, yMax{ float(INT_MIN) };
-	for (const Vector2& vertex : vertices_rasterized)
+	for (const Vertex& vertex : vertices_rasterized)
 	{
-		if (xMin > vertex.x) xMin = vertex.x;
-		if (yMin > vertex.y) yMin = vertex.y;
-		if (xMax < vertex.x) xMax = vertex.x;
-		if (yMax < vertex.y) yMax = vertex.y;
+		if (xMin > vertex.position.x) xMin = vertex.position.x;
+		if (yMin > vertex.position.y) yMin = vertex.position.y;
+		if (xMax < vertex.position.x) xMax = vertex.position.x;
+		if (yMax < vertex.position.y) yMax = vertex.position.y;
 	}
+	std::vector<BoundingBox> boundingBox{};
 	boundingBox.push_back(BoundingBox{ xMin,xMax,yMin,yMax });
 
 	//RENDER LOGIC
@@ -74,7 +75,7 @@ void Renderer::Render()
 			gradient /= 2.0f;*/
 
 			Vector2 P{ px + 0.5f,py + 0.5f };
-			ColorRGB finalColor{};
+			ColorRGB finalColor{}, interpolatedColor{};
 
 			//Pixel color is black by default
 			finalColor = colors::Black;
@@ -82,8 +83,8 @@ void Renderer::Render()
 			//checking if the pixel is within the bounding box of the triangle
 			if (boundingBox[0].IsPointInBox(P))
 			{
-				if (Utils::TriangleHitTest(vertices_rasterized[0], vertices_rasterized[1], vertices_rasterized[2], P))
-					finalColor = colors::White;
+				if (Utils::TriangleHitTest(vertices_rasterized, P, interpolatedColor))
+					finalColor = interpolatedColor;
 			}
 
 			//Update Color in Buffer
@@ -103,14 +104,16 @@ void Renderer::Render()
 	SDL_UpdateWindowSurface(m_pWindow);
 }
 
-void Renderer::NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vector2>& vertices_out) const
+void Renderer::NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
 {
 	vertices_out.reserve(vertices_in.size());
-	for (const Vertex& vertex : vertices_in)
+	for (size_t i = 0; i < vertices_in.size(); i++)
 	{
-		const float vertX{ (vertex.position.x + 1) / 2.f * m_Width };
-		const float vertY{ (1 - vertex.position.y) / 2.f * m_Height };
-		vertices_out.push_back(Vector2{ vertX,vertY });
+		vertices_out.push_back(vertices_in[i]);
+		const float vertX{ (vertices_in[i].position.x + 1) / 2.f * m_Width};
+		const float vertY{ (1 - vertices_in[i].position.y) / 2.f * m_Height};
+		vertices_out[i].position.x = vertX;
+		vertices_out[i].position.y = vertY;
 	}
 }
 
