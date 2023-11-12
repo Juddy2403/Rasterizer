@@ -173,15 +173,6 @@ namespace dae
 			return true;
 #endif
 		}
-		
-		float RasterSpaceX(float vertexX, float width)
-		{
-			return  (vertexX + 1) / 2.f * width;
-		}
-		float RasterSpaceY(float vertexY, float height)
-		{
-			return  (1 - vertexY) / 2.f * height;
-		}
 
 		bool TriangleHitTest(const Vector2& v0, const Vector2& v1, const Vector2& v2, const Vector2& pixelVector)
 		{

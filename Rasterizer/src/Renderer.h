@@ -34,7 +34,7 @@ namespace dae
 		bool SaveBufferToImage() const;
 
 		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
-
+		void NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vector2>& vertices_out) const;
 	private:
 		struct BoundingBox {
 
@@ -63,19 +63,11 @@ namespace dae
 
 		Camera m_Camera{};
 
-		
-
-		const std::vector<Vector3> vertices_ndc
-		{
-			{0.f,.5f,1.f},
-			{.5f,-.5f,1.f},
-			{-.5f,-.5f,1.f}
-		};
-		std::vector<Vector2> vertices_rasterized{};
 		std::vector<BoundingBox> boundingBox{};
 
 		int m_Width{};
 		int m_Height{};
+		float m_AspectRatio{};
 	};
 	
 
