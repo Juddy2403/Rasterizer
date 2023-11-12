@@ -151,7 +151,7 @@ void Renderer::TrianglesBoundingBox(const std::vector<Vertex>& vertices, std::ve
 	bb.reserve(vertices.size() / 3);
 	for (size_t i = 0; i < vertices.size(); i+=3)
 	{
-		uint16_t xMin{ UINT16_MAX }, xMax{ 0 }, yMin{ UINT16_MAX }, yMax{ 0 }; 
+		float xMin{ FLT_MAX }, xMax{ 0 }, yMin{ FLT_MAX }, yMax{ 0 }; 
 		for (size_t j = 0; j < 3; j++)
 		{
 			if (xMin > vertices[i+j].position.x) xMin =  vertices[i+j].position.x;

@@ -36,12 +36,12 @@ namespace dae
 	private:
 		struct BoundingBox {
 
-			uint16_t xMin{};
-			uint16_t yMin{};
-			uint16_t xMax{};
-			uint16_t yMax{};
+			float xMin{};
+			float yMin{};
+			float xMax{};
+			float yMax{};
 
-			BoundingBox(uint16_t _xMin, uint16_t _xMax, uint16_t _yMin, uint16_t _yMax) : xMin{ _xMin }, xMax{ _xMax }, yMin{ _yMin }, yMax{ _yMax } {}
+			BoundingBox(float _xMin, float _xMax, float _yMin, float _yMax) : xMin{ _xMin }, xMax{ _xMax }, yMin{ _yMin }, yMax{ _yMax } {}
 			bool IsPointInBox(const Vector2& point)
 			{
 				if (point.x < xMin) return false;
