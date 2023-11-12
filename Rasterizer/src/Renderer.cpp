@@ -71,15 +71,11 @@ void Renderer::Render()
 	{
 		for (int py{}; py < m_Height; ++py)
 		{
-			/*float gradient = px / static_cast<float>(m_Width);
-			gradient += py / static_cast<float>(m_Width);
-			gradient /= 2.0f;*/
-
 			Vector2 P{ px + 0.5f,py + 0.5f };
 			ColorRGB finalColor{}, interpolatedColor{};
 
 			//Pixel color is black by default
-			finalColor = colors::Black;
+			finalColor = colors::Gray;
 
 			for (size_t i = 0; i < vertices_rasterized.size(); i += 3)
 			{
@@ -152,6 +148,7 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 
 void Renderer::TrianglesBoundingBox(const std::vector<Vertex>& vertices, std::vector<BoundingBox>& bb) const
 {
+	bb.reserve(vertices.size() / 3);
 	for (size_t i = 0; i < vertices.size(); i+=3)
 	{
 		uint16_t xMin{ UINT16_MAX }, xMax{ 0 }, yMin{ UINT16_MAX }, yMax{ 0 }; 
@@ -162,10 +159,10 @@ void Renderer::TrianglesBoundingBox(const std::vector<Vertex>& vertices, std::ve
 			if (xMax < vertices[i+j].position.x) xMax =  vertices[i+j].position.x;
 			if (yMax < vertices[i+j].position.y) yMax =  vertices[i+j].position.y;
 		}
-		//xMin = std::max(int(xMin), 0);
-		//yMin = std::max(int(yMin), 0);
-		//xMax = std::min(int(xMax), m_Width - 1);
-		//yMax = std::min(int(yMax), m_Height - 1);
+		xMin = std::max(int(xMin), 0);
+		yMin = std::max(int(yMin), 0);
+		xMax = std::min(int(xMax), m_Width - 1);
+		yMax = std::min(int(yMax), m_Height - 1);
 		bb.push_back(BoundingBox{ xMin,xMax,yMin,yMax });
 	}
 	
