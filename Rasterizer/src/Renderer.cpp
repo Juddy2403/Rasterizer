@@ -25,6 +25,21 @@ Renderer::Renderer(SDL_Window* pWindow) :
 
 	//Initialize Camera
 	m_Camera.Initialize(60.f, { .0f,.0f,-10.f });
+
+	for (Vector3 vertex : vertices_ndc)
+	{
+		vertices_rasterized.push_back(Vector2{ Utils::RasterSpaceX(vertex.x, m_Width), Utils::RasterSpaceY(vertex.y, m_Height) });
+	}
+
+	float xMin{ float(INT_MAX) }, xMax{ float(INT_MIN) }, yMin{ float(INT_MAX) }, yMax{ float(INT_MIN) };
+	for (Vector2 vertex : vertices_rasterized)
+	{
+		if (xMin > vertex.x) xMin = vertex.x;
+		if (yMin > vertex.y) yMin = vertex.y;
+		if (xMax < vertex.x) xMax = vertex.x;
+		if (yMax < vertex.y) yMax = vertex.y;
+	}
+	boundingBox.push_back(BoundingBox{ xMin,xMax,yMin,yMax });
 }
 
 Renderer::~Renderer()
@@ -42,18 +57,26 @@ void Renderer::Render()
 	//@START
 	//Lock BackBuffer
 	SDL_LockSurface(m_pBackBuffer);
-
+	
 	//RENDER LOGIC
 	for (int px{}; px < m_Width; ++px)
 	{
 		for (int py{}; py < m_Height; ++py)
 		{
-			float gradient = px / static_cast<float>(m_Width);
+			/*float gradient = px / static_cast<float>(m_Width);
 			gradient += py / static_cast<float>(m_Width);
-			gradient /= 2.0f;
+			gradient /= 2.0f;*/
 
-			ColorRGB finalColor{ gradient, gradient, gradient };
+			Vector2 P{ px + 0.5f,py + 0.5f};
+			ColorRGB finalColor{};
 
+			finalColor = colors::Black;
+			if(boundingBox[0].IsPointInBox(P))
+			{
+				if (Utils::TriangleHitTest(vertices_rasterized[0], vertices_rasterized[1], vertices_rasterized[2], P))
+					finalColor = colors::White;
+			}
+			
 			//Update Color in Buffer
 			finalColor.MaxToOne();
 
@@ -70,6 +93,7 @@ void Renderer::Render()
 	SDL_BlitSurface(m_pBackBuffer, 0, m_pFrontBuffer, 0);
 	SDL_UpdateWindowSurface(m_pWindow);
 }
+
 
 void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
 {
