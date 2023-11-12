@@ -174,32 +174,32 @@ namespace dae
 #endif
 		}
 
-		bool TriangleHitTest(const std::vector<Vertex>& vertices, const Vector2& pixelVector,ColorRGB& color)
+		bool TriangleHitTest(const Vertex& v0, const Vertex& v1, const Vertex& v2, const Vector2& pixelVector, ColorRGB& color, float& pixelDepth)
 		{
-			for (size_t i = 0; i < vertices.size(); i += 3)
-			{
-				const Vector2 edge0{ vertices[i].position,vertices[i + 1].position };
-				const Vector2 edge1{ vertices[i + 1].position,vertices[i + 2].position };
-				const Vector2 edge2{ vertices[i + 2].position,vertices[i].position };
 
-				const Vector2 vertToPixel0{ vertices[i].position,pixelVector };
-				const Vector2 vertToPixel1{ vertices[i + 1].position,pixelVector };
-				const Vector2 vertToPixel2{ vertices[i + 2].position,pixelVector };
+			const Vector2 edge0{ v0.position,v1.position };
+			const Vector2 edge1{ v1.position,v2.position };
+			const Vector2 edge2{ v2.position,v0.position };
 
-				const float cross0{ Vector2::Cross(edge0,vertToPixel0) };
-				const float cross1{ Vector2::Cross(edge1,vertToPixel1) };
-				if (cross0 * cross1 < 0) return false;
-				const float cross2{ Vector2::Cross(edge2,vertToPixel2) };
+			const Vector2 vertToPixel0{ v0.position,pixelVector };
+			const Vector2 vertToPixel1{ v1.position,pixelVector };
+			const Vector2 vertToPixel2{ v2.position,pixelVector };
 
-				//Calculating each vertices' weight
-				const float doubleArea{ Vector2::Cross(edge0,edge1) };
-				const float W2{ cross0 / doubleArea };
-				const float W0{ cross1 / doubleArea };
-				const float W1{ cross2 / doubleArea };
+			const float cross0{ Vector2::Cross(edge0,vertToPixel0) };
+			const float cross1{ Vector2::Cross(edge1,vertToPixel1) };
+			if (cross0 * cross1 < 0) return false;
+			const float cross2{ Vector2::Cross(edge2,vertToPixel2) };
 
-				color = vertices[i].color * W0 + vertices[i+1].color * W1 + vertices[i+2].color * W2;
-				if ((cross0 > 0 && cross1 > 0 && cross2 > 0) || (cross0 < 0 && cross1 < 0 && cross2 < 0)) return true;
-			}
+			//Calculating each vertices' weight
+			const float doubleArea{ Vector2::Cross(edge0,edge1) };
+			const float W2{ cross0 / doubleArea };
+			const float W0{ cross1 / doubleArea };
+			const float W1{ cross2 / doubleArea };
+
+			color = v0.color * W0 + v1.color * W1 + v2.color * W2;
+			pixelDepth = v0.position.z * W0 + v1.position.z * W1 + v2.position.z * W2;
+			if ((cross0 > 0 && cross1 > 0 && cross2 > 0) || (cross0 < 0 && cross1 < 0 && cross2 < 0)) return true;
+
 			return false;
 		}
 #pragma warning(pop)

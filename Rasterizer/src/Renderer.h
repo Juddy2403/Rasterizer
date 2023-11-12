@@ -33,17 +33,15 @@ namespace dae
 
 		bool SaveBufferToImage() const;
 
-		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
-		void NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
 	private:
 		struct BoundingBox {
 
-			float xMin{};
-			float yMin{};
-			float xMax{};
-			float yMax{};
+			uint16_t xMin{};
+			uint16_t yMin{};
+			uint16_t xMax{};
+			uint16_t yMax{};
 
-			BoundingBox(float _xMin, float _xMax, float _yMin, float _yMax) : xMin{ _xMin }, xMax{ _xMax }, yMin{ _yMin }, yMax{ _yMax } {}
+			BoundingBox(uint16_t _xMin, uint16_t _xMax, uint16_t _yMin, uint16_t _yMax) : xMin{ _xMin }, xMax{ _xMax }, yMin{ _yMin }, yMax{ _yMax } {}
 			bool IsPointInBox(const Vector2& point)
 			{
 				if (point.x < xMin) return false;
@@ -58,14 +56,17 @@ namespace dae
 		SDL_Surface* m_pFrontBuffer{ nullptr };
 		SDL_Surface* m_pBackBuffer{ nullptr };
 		uint32_t* m_pBackBufferPixels{};
-
-		//float* m_pDepthBufferPixels{};
+		float* m_pDepthBufferPixels{};
 
 		Camera m_Camera{};
 
 		int m_Width{};
 		int m_Height{};
 		float m_AspectRatio{};
+
+		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
+		void TrianglesBoundingBox(const std::vector<Vertex>& vertices, std::vector<BoundingBox>& bb) const;
+		void NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
 	};
 	
 
