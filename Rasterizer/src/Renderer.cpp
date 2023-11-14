@@ -78,6 +78,13 @@ void Renderer::Render()
 	//Depth buffer
 	std::fill(&m_pDepthBufferPixels[0], &m_pDepthBufferPixels[m_Width * m_Height-1], FLT_MAX);
 
+	//color the screen
+	SDL_FillRect(m_pBackBuffer, NULL, SDL_MapRGB(m_pBackBuffer->format,
+		static_cast<uint8_t>(100.f * 255),
+		static_cast<uint8_t>(100.f * 255),
+		static_cast<uint8_t>(100.f * 255))
+	);
+
 	//RENDER LOGIC
 #if defined(MULTI_THREADING)
 	std::for_each(std::execution::par, m_ImageHorizontalIterator.begin(), m_ImageHorizontalIterator.end(), [&](uint32_t px)
@@ -116,41 +123,40 @@ void Renderer::Render()
 				});
 		});
 #else
-	for (int px{}; px < m_Width; ++px)
+
+	for (size_t i = 0; i < vertices_rasterized.size(); i += 3)
 	{
-		for (int py{}; py < m_Height; ++py)
+		for (int px{}; px < m_Width; ++px)
 		{
-			Vector2 P{ px + 0.5f,py + 0.5f };
-			ColorRGB finalColor{}, interpolatedColor{};
-
-			//Pixel color is black by default
-			finalColor = colors::Gray;
-
-			for (size_t i = 0; i < vertices_rasterized.size(); i += 3)
+			for (int py{}; py < m_Height; ++py)
 			{
+				Vector2 P{ px + 0.5f,py + 0.5f };
+				if (boundingBox[i / 3].IsTriangleDone(P)) { py = m_Height; px = m_Width; break; }
 				//checking if the pixel is within the bounding box of the triangle
-				if (boundingBox[i/3].IsPointInBox(P))
+				if (boundingBox[i / 3].IsPointInBox(P))
 				{
+					ColorRGB finalColor{}, interpolatedColor{};
 					float pixelDepth{};
-					if (Utils::TriangleHitTest(vertices_rasterized[i], vertices_rasterized[i+1], vertices_rasterized[i+2], P, interpolatedColor, pixelDepth))
+					if (Utils::TriangleHitTest(vertices_rasterized[i], vertices_rasterized[i + 1], vertices_rasterized[i + 2], P, interpolatedColor, pixelDepth))
 					{
 						if (m_pDepthBufferPixels[px + (py * m_Width)] > pixelDepth)
 						{
 							m_pDepthBufferPixels[px + (py * m_Width)] = pixelDepth;
 							finalColor = interpolatedColor;
+							//Update Color in Buffer
+							finalColor.MaxToOne();
+							m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+								static_cast<uint8_t>(finalColor.r * 255),
+								static_cast<uint8_t>(finalColor.g * 255),
+								static_cast<uint8_t>(finalColor.b * 255));
 						}
 					}
 				}
+				
 			}
-			
-			//Update Color in Buffer
-			finalColor.MaxToOne();
-			m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
-				static_cast<uint8_t>(finalColor.r * 255),
-				static_cast<uint8_t>(finalColor.g * 255),
-				static_cast<uint8_t>(finalColor.b * 255));
 		}
 	}
+			
 #endif
 	//@END
 	//Update SDL Surface
