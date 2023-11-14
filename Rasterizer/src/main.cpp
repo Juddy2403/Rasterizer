@@ -42,7 +42,7 @@ int main(int argc, char* args[])
 
 	//Initialize "framework"
 	const auto pTimer = new Timer();
-	const auto pRenderer = new Renderer(pWindow);
+	thread_local const auto pRenderer = new Renderer(pWindow);
 
 	//Start loop
 	pTimer->Start();

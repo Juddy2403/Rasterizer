@@ -4,6 +4,8 @@
 #include <vector>
 #include "Camera.h"
 
+//#define MULTI_THREADING
+
 struct SDL_Window;
 struct SDL_Surface;
 struct BoundingBox;
@@ -58,6 +60,9 @@ namespace dae
 		uint32_t* m_pBackBufferPixels{};
 		float* m_pDepthBufferPixels{};
 
+#if defined(MULTI_THREADING)
+		std::vector<uint32_t> m_ImageHorizontalIterator, m_ImageVerticalIterator;
+#endif
 		Camera m_Camera{};
 
 		int m_Width{};

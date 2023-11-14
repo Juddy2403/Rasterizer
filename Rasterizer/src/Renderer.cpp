@@ -7,6 +7,8 @@
 #include "Maths.h"
 #include "Texture.h"
 #include "Utils.h"
+#include <algorithm>
+#include <execution>
 
 using namespace dae;
 
@@ -27,6 +29,15 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	//Initialize Camera
 	m_Camera.Initialize(60.f, { .0f,.0f,-10.f });
 
+#if defined(MULTI_THREADING)
+	//Multi-threading 
+	m_ImageHorizontalIterator.resize(m_Width);
+	m_ImageVerticalIterator.resize(m_Height);
+	for (int index = 0; index < m_Width; ++index)
+		m_ImageHorizontalIterator[index] = index;
+	for (int index = 0; index < m_Height; ++index)
+		m_ImageVerticalIterator[index] = index;
+#endif
 }
 
 Renderer::~Renderer()
@@ -55,6 +66,7 @@ void Renderer::Render()
 		Vertex{Vector3{0.f,4.f,2.f},ColorRGB{1,0,0}},
 		Vertex{Vector3{3.f,-2.f,2.f },ColorRGB{0,1,0}},
 		Vertex{Vector3{-3.f,-2.f,2.f },ColorRGB{0,0,1}}
+
 	};
 	std::vector<Vertex> vertices_ndc{};
 	std::vector<Vertex> vertices_rasterized{};
@@ -67,6 +79,43 @@ void Renderer::Render()
 	std::fill(&m_pDepthBufferPixels[0], &m_pDepthBufferPixels[m_Width * m_Height-1], FLT_MAX);
 
 	//RENDER LOGIC
+#if defined(MULTI_THREADING)
+	std::for_each(std::execution::par, m_ImageHorizontalIterator.begin(), m_ImageHorizontalIterator.end(), [&](uint32_t px)
+		{
+			std::for_each(std::execution::par, m_ImageVerticalIterator.begin(), m_ImageVerticalIterator.end(), [&](uint32_t py)
+				{
+					Vector2 P{ px + 0.5f,py + 0.5f };
+					ColorRGB finalColor{}, interpolatedColor{};
+
+					//Pixel color is black by default
+					finalColor = colors::Gray;
+
+					for (size_t i = 0; i < vertices_rasterized.size(); i += 3)
+					{
+						//checking if the pixel is within the bounding box of the triangle
+						if (boundingBox[i / 3].IsPointInBox(P))
+						{
+							float pixelDepth{};
+							if (Utils::TriangleHitTest(vertices_rasterized[i], vertices_rasterized[i + 1], vertices_rasterized[i + 2], P, interpolatedColor, pixelDepth))
+							{
+								if (m_pDepthBufferPixels[px + (py * m_Width)] > pixelDepth)
+								{
+									m_pDepthBufferPixels[px + (py * m_Width)] = pixelDepth;
+									finalColor = interpolatedColor;
+								}
+							}
+						}
+					}
+
+					//Update Color in Buffer
+					finalColor.MaxToOne();
+					m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+						static_cast<uint8_t>(finalColor.r * 255),
+						static_cast<uint8_t>(finalColor.g * 255),
+						static_cast<uint8_t>(finalColor.b * 255));
+				});
+		});
+#else
 	for (int px{}; px < m_Width; ++px)
 	{
 		for (int py{}; py < m_Height; ++py)
@@ -102,7 +151,7 @@ void Renderer::Render()
 				static_cast<uint8_t>(finalColor.b * 255));
 		}
 	}
-
+#endif
 	//@END
 	//Update SDL Surface
 	SDL_UnlockSurface(m_pBackBuffer);
