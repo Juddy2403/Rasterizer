@@ -52,10 +52,6 @@ namespace dae
 				if (point.y > yMax) return false;
 				return true;
 			}
-			bool IsTriangleDone(const Vector2& point)
-			{
-				return (point.x > xMax) && (point.y < yMin);
-			}
 		};
 		SDL_Window* m_pWindow{};
 
