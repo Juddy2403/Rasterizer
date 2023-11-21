@@ -13,7 +13,49 @@
 using namespace dae;
 
 Renderer::Renderer(SDL_Window* pWindow) :
-	m_pWindow(pWindow)
+	m_pWindow(pWindow),
+	//Define triangle list mesh
+	meshes_world
+{
+	Mesh{
+			{
+			Vertex{ Vector3{-3,3,-2}},
+			Vertex{ Vector3{0,3,-2}},
+			Vertex{ Vector3{3,3,-2}},
+			Vertex{ Vector3{-3,0,-2}},
+			Vertex{ Vector3{0,0,-2}},
+			Vertex{ Vector3{3,0,-2}},
+			Vertex{ Vector3{-3,-3,-2}},
+			Vertex{ Vector3{0,-3,-2}},
+			Vertex{ Vector3{3,-3,-2}},
+			},
+			{
+				/*3,0,1,  1,4,3,  4,1,2,
+				2,5,4,  6,3,4,  4,7,6,
+				7,4,5,  5,8,7*/
+				3,0,4,1,5,2,
+				2,6,
+				6,3,7,4,8,5
+			},
+		PrimitiveTopology::TriangleStrip
+		}
+	//Mesh{
+	//		{
+	//		//Triangle 1
+	//			Vertex{Vector3{0.f,2.f,0.f},ColorRGB{1,0,0}},
+	//			Vertex{Vector3{1.5f,-1.f,0.f },ColorRGB{1,0,0}},
+	//			Vertex{Vector3{-1.5f,-1.f,0.f },ColorRGB{1,0,0}},
+	//			//Triangle 2
+	//				Vertex{Vector3{0.f,4.f,2.f},ColorRGB{1,0,0}},
+	//				Vertex{Vector3{3.f,-2.f,2.f },ColorRGB{0,1,0}},
+	//				Vertex{Vector3{-3.f,-2.f,2.f },ColorRGB{0,0,1}}
+	//			},
+	//			{
+	//				0,1,2,  3,4,5
+	//			},
+	//		PrimitiveTopology::TriangleList
+	//		}
+}
 {
 	//Initialize
 	SDL_GetWindowSize(pWindow, &m_Width, &m_Height);
@@ -28,6 +70,8 @@ Renderer::Renderer(SDL_Window* pWindow) :
 
 	//Initialize Camera
 	m_Camera.Initialize(60.f, { .0f,.0f,-10.f });
+
+	
 
 #if defined(MULTI_THREADING)
 	//Multi-threading 
@@ -56,25 +100,6 @@ void Renderer::Render()
 	//Lock BackBuffer
 	SDL_LockSurface(m_pBackBuffer);
 
-	const std::vector<Vertex> vertices_world
-	{
-		//Triangle 1
-			Vertex{Vector3{0.f,2.f,0.f},ColorRGB{1,0,0}},
-			Vertex{Vector3{1.5f,-1.f,0.f },ColorRGB{1,0,0}},
-			Vertex{Vector3{-1.5f,-1.f,0.f },ColorRGB{1,0,0}},
-			//Triangle 2
-				Vertex{Vector3{0.f,4.f,2.f},ColorRGB{1,0,0}},
-				Vertex{Vector3{3.f,-2.f,2.f },ColorRGB{0,1,0}},
-				Vertex{Vector3{-3.f,-2.f,2.f },ColorRGB{0,0,1}}
-
-	};
-	std::vector<Vertex> vertices_ndc{};
-	std::vector<Vertex> vertices_rasterized{};
-	VertexTransformationFunction(vertices_world, vertices_ndc);
-	NDCToRaster(vertices_ndc, vertices_rasterized);
-	std::vector<BoundingBox> boundingBox{};
-	TrianglesBoundingBox(vertices_rasterized, boundingBox);
-
 	//Depth buffer
 	std::fill(&m_pDepthBufferPixels[0], &m_pDepthBufferPixels[m_Width * m_Height - 1], FLT_MAX);
 
@@ -84,6 +109,9 @@ void Renderer::Render()
 		static_cast<uint8_t>(100.f * 255),
 		static_cast<uint8_t>(100.f * 255))
 	);
+
+	VertexTransformationFunction(meshes_world);
+	TrianglesBoundingBox(meshes_world);
 
 	//RENDER LOGIC
 #if defined(MULTI_THREADING)
@@ -113,7 +141,7 @@ void Renderer::Render()
 										static_cast<uint8_t>(finalColor.r * 255),
 										static_cast<uint8_t>(finalColor.g * 255),
 										static_cast<uint8_t>(finalColor.b * 255));
-								}
+}
 							}
 						}
 					}
@@ -122,34 +150,77 @@ void Renderer::Render()
 				});
 		});
 #else
-
-	for (size_t i = 0; i < vertices_rasterized.size(); i += 3)
+	for (Mesh& mesh : meshes_world)
 	{
-		for (int px{ int(boundingBox[i / 3].xMin) }; px < int(boundingBox[i / 3].xMax); ++px)
+		if(mesh.primitiveTopology == PrimitiveTopology::TriangleList)
+		for (size_t i = 0; i < mesh.indices.size(); i += 3)
 		{
-			for (int py{ int(boundingBox[i / 3].yMin) }; py < int(boundingBox[i / 3].yMax); ++py)
+			for (int px{ mesh.bounding_boxes[i / 3].xMin }; px < mesh.bounding_boxes[i / 3].xMax; ++px)
 			{
-				Vector2 P{ px + 0.5f,py + 0.5f };
-
-				ColorRGB finalColor{}, interpolatedColor{};
-				float pixelDepth{};
-				if (Utils::TriangleHitTest(vertices_rasterized[i], vertices_rasterized[i + 1], vertices_rasterized[i + 2], P, interpolatedColor, pixelDepth))
+				for (int py{ mesh.bounding_boxes[i / 3].yMin }; py < mesh.bounding_boxes[i / 3].yMax; ++py)
 				{
-					if (m_pDepthBufferPixels[px + (py * m_Width)] > pixelDepth)
-					{
-						m_pDepthBufferPixels[px + (py * m_Width)] = pixelDepth;
-						finalColor = interpolatedColor;
+					Vector2 P{ px + 0.5f,py + 0.5f };
 
-						//Update Color in Buffer
-						finalColor.MaxToOne();
-						m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
-							static_cast<uint8_t>(finalColor.r * 255),
-							static_cast<uint8_t>(finalColor.g * 255),
-							static_cast<uint8_t>(finalColor.b * 255));
+					ColorRGB finalColor{}, interpolatedColor{};
+					float pixelDepth{};
+					if (Utils::TriangleHitTest(mesh.transformed_vertices[mesh.indices[i]], mesh.transformed_vertices[mesh.indices[i+1]], 
+						mesh.transformed_vertices[mesh.indices[i+2]], P, interpolatedColor, pixelDepth))
+					{
+						if (m_pDepthBufferPixels[px + (py * m_Width)] > pixelDepth)
+						{
+							m_pDepthBufferPixels[px + (py * m_Width)] = pixelDepth;
+							finalColor = interpolatedColor;
+
+							//Update Color in Buffer
+							finalColor.MaxToOne();
+							m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+								static_cast<uint8_t>(finalColor.r * 255),
+								static_cast<uint8_t>(finalColor.g * 255),
+								static_cast<uint8_t>(finalColor.b * 255));
+						}
+					}
+
+
+				}
+			}
+		}
+		else
+		{
+			for (size_t i = 0; i < mesh.indices.size() - 2; ++i)
+			{
+				for (int px{ mesh.bounding_boxes[i].xMin }; px < mesh.bounding_boxes[i].xMax; ++px)
+				{
+					for (int py{ mesh.bounding_boxes[i].yMin }; py < mesh.bounding_boxes[i].yMax; ++py)
+					{
+						Vector2 P{ px + 0.5f,py + 0.5f };
+
+						ColorRGB finalColor{}, interpolatedColor{};
+						float pixelDepth{};
+						const bool doesTriangleHit{ (i % 2 == 0) ?
+							Utils::TriangleHitTest(mesh.transformed_vertices[mesh.indices[i]], mesh.transformed_vertices[mesh.indices[i + 1]],
+							mesh.transformed_vertices[mesh.indices[i + 2]], P, interpolatedColor, pixelDepth) :
+						Utils::TriangleHitTest(mesh.transformed_vertices[mesh.indices[i]], mesh.transformed_vertices[mesh.indices[i + 2]],
+							mesh.transformed_vertices[mesh.indices[i + 1]], P, interpolatedColor, pixelDepth) };
+
+						if (doesTriangleHit)
+						{
+							if (m_pDepthBufferPixels[px + (py * m_Width)] > pixelDepth)
+							{
+								m_pDepthBufferPixels[px + (py * m_Width)] = pixelDepth;
+								finalColor = interpolatedColor;
+
+								//Update Color in Buffer
+								finalColor.MaxToOne();
+								m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+									static_cast<uint8_t>(finalColor.r * 255),
+									static_cast<uint8_t>(finalColor.g * 255),
+									static_cast<uint8_t>(finalColor.b * 255));
+							}
+						}
+
+
 					}
 				}
-
-
 			}
 		}
 	}
@@ -175,47 +246,79 @@ void Renderer::NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<V
 	}
 }
 
-void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
+void Renderer::VertexTransformationFunction(std::vector<Mesh>& meshes) const
 {
-	//Todo > W1 Projection Stage
-
-	vertices_out.reserve(vertices_in.size());
-	for (size_t i = 0; i < vertices_in.size(); i++)
+	//Projection Stage
+	for(Mesh& mesh : meshes)
 	{
-		//copying all the vertex info into the new one
-		vertices_out.push_back(vertices_in[i]);
+		mesh.transformed_vertices.reserve(mesh.vertices.size());
 
-		//pos to view space
-		vertices_out[i].position = m_Camera.invViewMatrix.TransformPoint(vertices_in[i].position);
+		for (size_t i = 0; i < mesh.vertices.size(); i++)
+		{
+			mesh.transformed_vertices.push_back(mesh.vertices[i]);
 
-		//projecting view space
-		vertices_out[i].position.x /= vertices_out[i].position.z;
-		vertices_out[i].position.y /= vertices_out[i].position.z;
+			//pos to view space
+			mesh.transformed_vertices[i].position = m_Camera.invViewMatrix.TransformPoint(mesh.vertices[i].position);
 
-		//applying camera settings
-		vertices_out[i].position.x /= (m_AspectRatio * m_Camera.fov);
-		vertices_out[i].position.y /= m_Camera.fov;
+			//projecting view space
+			mesh.transformed_vertices[i].position.x /= mesh.transformed_vertices[i].position.z;
+			mesh.transformed_vertices[i].position.y /= mesh.transformed_vertices[i].position.z;
+
+			//applying camera settings
+			mesh.transformed_vertices[i].position.x /= (m_AspectRatio * m_Camera.fov);
+			mesh.transformed_vertices[i].position.y /= m_Camera.fov;
+
+			//NDC transformation
+			const float vertX{ (mesh.transformed_vertices[i].position.x + 1) / 2.f * m_Width };
+			const float vertY{ (1 - mesh.transformed_vertices[i].position.y) / 2.f * m_Height };
+			mesh.transformed_vertices[i].position.x = vertX;
+			mesh.transformed_vertices[i].position.y = vertY;
+		}
 	}
 }
 
-void Renderer::TrianglesBoundingBox(const std::vector<Vertex>& vertices, std::vector<BoundingBox>& bb) const
-{
-	bb.reserve(vertices.size() / 3);
-	for (size_t i = 0; i < vertices.size(); i += 3)
+void Renderer::TrianglesBoundingBox( std::vector<Mesh>& meshes) const
+{//should be calculated inside the mesh struct instead
+	for (Mesh& mesh : meshes)
 	{
-		float xMin{ FLT_MAX }, xMax{ 0 }, yMin{ FLT_MAX }, yMax{ 0 };
-		for (size_t j = 0; j < 3; j++)
+		mesh.bounding_boxes.clear();
+
+		if(mesh.primitiveTopology == PrimitiveTopology::TriangleList)
 		{
-			if (xMin > vertices[i + j].position.x) xMin = vertices[i + j].position.x;
-			if (yMin > vertices[i + j].position.y) yMin = vertices[i + j].position.y;
-			if (xMax < vertices[i + j].position.x) xMax = vertices[i + j].position.x;
-			if (yMax < vertices[i + j].position.y) yMax = vertices[i + j].position.y;
+			mesh.bounding_boxes.reserve(mesh.indices.size() / 3);
+			for (size_t i = 0; i < mesh.indices.size(); i += 3)
+			{
+				int minX = static_cast<int>(std::min(mesh.transformed_vertices[mesh.indices[i]].position.x, std::min(mesh.transformed_vertices[mesh.indices[i + 1]].position.x, mesh.transformed_vertices[mesh.indices[i + 2]].position.x)) - 0.5f);
+				int maxX = static_cast<int>(std::max(mesh.transformed_vertices[mesh.indices[i]].position.x, std::max(mesh.transformed_vertices[mesh.indices[i + 1]].position.x, mesh.transformed_vertices[mesh.indices[i + 2]].position.x)) + 0.5f);
+				int minY = static_cast<int>(std::min(mesh.transformed_vertices[mesh.indices[i]].position.y, std::min(mesh.transformed_vertices[mesh.indices[i + 1]].position.y, mesh.transformed_vertices[mesh.indices[i + 2]].position.y)) - 0.5f);
+				int maxY = static_cast<int>(std::max(mesh.transformed_vertices[mesh.indices[i]].position.y, std::max(mesh.transformed_vertices[mesh.indices[i + 1]].position.y, mesh.transformed_vertices[mesh.indices[i + 2]].position.y)) + 0.5f);
+
+				// if statement of std::clamp from C++ 20
+				minX = std::ranges::clamp(minX, 0, m_Width);
+				maxX = std::ranges::clamp(maxX, 0, m_Width);
+				minY = std::ranges::clamp(minY, 0, m_Height);
+				maxY = std::ranges::clamp(maxY, 0, m_Height);
+				mesh.bounding_boxes.push_back(BoundingBox{ minX,maxX,minY,maxY });
+			}
 		}
-		xMin = std::max(int(xMin), 0);
-		yMin = std::max(int(yMin), 0);
-		xMax = std::min(int(xMax), m_Width - 1);
-		yMax = std::min(int(yMax), m_Height - 1);
-		bb.push_back(BoundingBox{ xMin,xMax,yMin,yMax });
+		else
+		{
+			mesh.bounding_boxes.reserve(mesh.indices.size() - 2);
+			for (size_t i = 0; i < mesh.indices.size() - 2; ++i)
+			{
+				int minX = static_cast<int>(std::min(mesh.transformed_vertices[mesh.indices[i]].position.x, std::min(mesh.transformed_vertices[mesh.indices[i + 1]].position.x, mesh.transformed_vertices[mesh.indices[i + 2]].position.x)) - 0.5f);
+				int maxX = static_cast<int>(std::max(mesh.transformed_vertices[mesh.indices[i]].position.x, std::max(mesh.transformed_vertices[mesh.indices[i + 1]].position.x, mesh.transformed_vertices[mesh.indices[i + 2]].position.x)) + 0.5f);
+				int minY = static_cast<int>(std::min(mesh.transformed_vertices[mesh.indices[i]].position.y, std::min(mesh.transformed_vertices[mesh.indices[i + 1]].position.y, mesh.transformed_vertices[mesh.indices[i + 2]].position.y)) - 0.5f);
+				int maxY = static_cast<int>(std::max(mesh.transformed_vertices[mesh.indices[i]].position.y, std::max(mesh.transformed_vertices[mesh.indices[i + 1]].position.y, mesh.transformed_vertices[mesh.indices[i + 2]].position.y)) + 0.5f);
+
+				// if statement of std::clamp from C++ 20
+				minX = std::ranges::clamp(minX, 0, m_Width);
+				maxX = std::ranges::clamp(maxX, 0, m_Width);
+				minY = std::ranges::clamp(minY, 0, m_Height);
+				maxY = std::ranges::clamp(maxY, 0, m_Height);
+				mesh.bounding_boxes.push_back(BoundingBox{ minX,maxX,minY,maxY });
+			}
+		}
 	}
 
 }

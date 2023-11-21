@@ -4,6 +4,25 @@
 
 namespace dae
 {
+	struct BoundingBox 
+	{
+
+		int xMin{};
+		int yMin{};
+		int xMax{};
+		int yMax{};
+
+		BoundingBox(int _xMin, int _xMax, int _yMin, int _yMax) : xMin{ _xMin }, xMax{ _xMax }, yMin{ _yMin }, yMax{ _yMax } {}
+		//bool IsPointInBox(const Vector2& point)
+		//{
+		//	if (point.x < xMin) return false;
+		//	if (point.x > xMax) return false;
+		//	if (point.y < yMin) return false;
+		//	if (point.y > yMax) return false;
+		//	return true;
+		//}
+	};
+
 	struct Vertex
 	{
 		Vector3 position{};
@@ -35,10 +54,14 @@ namespace dae
 	struct Mesh
 	{
 		std::vector<Vertex> vertices{};
+
 		std::vector<uint32_t> indices{};
 		PrimitiveTopology primitiveTopology{ PrimitiveTopology::TriangleStrip };
 
 		std::vector<Vertex_Out> vertices_out{};
 		Matrix worldMatrix{};
+
+		std::vector<Vertex> transformed_vertices{};
+		std::vector<BoundingBox> bounding_boxes{};
 	};
 }
