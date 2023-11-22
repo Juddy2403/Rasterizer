@@ -5,7 +5,7 @@
 
 #include "Maths.h"
 #include "Timer.h"
-
+#include <iostream>
 namespace dae
 {
 	struct Camera
@@ -71,7 +71,8 @@ namespace dae
 		void Update(Timer* pTimer)
 		{
 			//Camera Update Logic
-			const float deltaTime = pTimer->GetElapsed();
+			float deltaTime = pTimer->GetElapsed();
+			deltaTime = std::ranges::clamp(deltaTime, 0.005f, 0.01f);
 
 			//Keyboard Input
 			const uint8_t* pKeyboardState = SDL_GetKeyboardState(nullptr);

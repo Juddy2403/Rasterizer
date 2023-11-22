@@ -198,7 +198,7 @@ namespace dae
 
 			color = v0.color * W0 + v1.color * W1 + v2.color * W2;
 			pixelDepth = v0.position.z * W0 + v1.position.z * W1 + v2.position.z * W2;
-			if ((cross0 > 0 && cross1 > 0 && cross2 > 0) || (cross0 < 0 && cross1 < 0 && cross2 < 0)) return true;
+			if ((cross0 >= 0 && cross1 >= 0 && cross2 >= 0) || (cross0 <= 0 && cross1 <= 0 && cross2 <= 0)) return true;
 
 			return false;
 		}

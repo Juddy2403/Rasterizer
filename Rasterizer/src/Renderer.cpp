@@ -16,29 +16,29 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	m_pWindow(pWindow),
 	//Define triangle list mesh
 	meshes_world
-{
-	Mesh{
-			{
-			Vertex{ Vector3{-3,3,-2}},
-			Vertex{ Vector3{0,3,-2}},
-			Vertex{ Vector3{3,3,-2}},
-			Vertex{ Vector3{-3,0,-2}},
-			Vertex{ Vector3{0,0,-2}},
-			Vertex{ Vector3{3,0,-2}},
-			Vertex{ Vector3{-3,-3,-2}},
-			Vertex{ Vector3{0,-3,-2}},
-			Vertex{ Vector3{3,-3,-2}},
-			},
-			{
-				/*3,0,1,  1,4,3,  4,1,2,
-				2,5,4,  6,3,4,  4,7,6,
-				7,4,5,  5,8,7*/
-				3,0,4,1,5,2,
-				2,6,
-				6,3,7,4,8,5
-			},
-		PrimitiveTopology::TriangleStrip
-		}
+	{
+		Mesh{
+				{
+				Vertex{ Vector3{-3,3,-2}},
+				Vertex{ Vector3{0,3,-2}},
+				Vertex{ Vector3{3,3,-2}},
+				Vertex{ Vector3{-3,0,-2}},
+				Vertex{ Vector3{0,0,-2}},
+				Vertex{ Vector3{3,0,-2}},
+				Vertex{ Vector3{-3,-3,-2}},
+				Vertex{ Vector3{0,-3,-2}},
+				Vertex{ Vector3{3,-3,-2}},
+				},
+				{
+					/*3,0,1,  1,4,3,  4,1,2,
+					2,5,4,  6,3,4,  4,7,6,
+					7,4,5,  5,8,7*/
+					3,0,4,1,5,2,
+					2,6,
+					6,3,7,4,8,5
+				},
+			PrimitiveTopology::TriangleStrip
+			}
 	//Mesh{
 	//		{
 	//		//Triangle 1
@@ -55,7 +55,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	//			},
 	//		PrimitiveTopology::TriangleList
 	//		}
-}
+	}
 {
 	//Initialize
 	SDL_GetWindowSize(pWindow, &m_Width, &m_Height);
@@ -71,7 +71,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	//Initialize Camera
 	m_Camera.Initialize(60.f, { .0f,.0f,-10.f });
 
-	
+
 
 #if defined(MULTI_THREADING)
 	//Multi-threading 
@@ -141,7 +141,7 @@ void Renderer::Render()
 										static_cast<uint8_t>(finalColor.r * 255),
 										static_cast<uint8_t>(finalColor.g * 255),
 										static_cast<uint8_t>(finalColor.b * 255));
-}
+								}
 							}
 						}
 					}
@@ -152,77 +152,46 @@ void Renderer::Render()
 #else
 	for (Mesh& mesh : meshes_world)
 	{
-		if(mesh.primitiveTopology == PrimitiveTopology::TriangleList)
-		for (size_t i = 0; i < mesh.indices.size(); i += 3)
+		const size_t numTriangles = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? mesh.indices.size() / 3 : mesh.indices.size() - 2;
+
+		for (size_t i = 0; i < numTriangles; ++i)
 		{
-			for (int px{ mesh.bounding_boxes[i / 3].xMin }; px < mesh.bounding_boxes[i / 3].xMax; ++px)
+			const size_t index0 = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? mesh.indices[i * 3] : mesh.indices[i];
+			const size_t index1 = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? mesh.indices[i * 3 + 1] : mesh.indices[i + 1];
+			const size_t index2 = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? mesh.indices[i * 3 + 2] : mesh.indices[i + 2];
+
+			const BoundingBox& boundingBox = mesh.bounding_boxes[i];
+
+			for (int px = boundingBox.xMin; px < boundingBox.xMax; ++px)
 			{
-				for (int py{ mesh.bounding_boxes[i / 3].yMin }; py < mesh.bounding_boxes[i / 3].yMax; ++py)
+				for (int py = boundingBox.yMin; py < boundingBox.yMax; ++py)
 				{
-					Vector2 P{ px + 0.5f,py + 0.5f };
+					const Vector2 P(px + 0.5f, py + 0.5f);
 
-					ColorRGB finalColor{}, interpolatedColor{};
-					float pixelDepth{};
-					if (Utils::TriangleHitTest(mesh.transformed_vertices[mesh.indices[i]], mesh.transformed_vertices[mesh.indices[i+1]], 
-						mesh.transformed_vertices[mesh.indices[i+2]], P, interpolatedColor, pixelDepth))
+					ColorRGB finalColor, interpolatedColor;
+					float pixelDepth;
+
+					const bool doesTriangleHit = (i % 2 == 0 || mesh.primitiveTopology == PrimitiveTopology::TriangleList) ?
+						Utils::TriangleHitTest(mesh.transformed_vertices[index0], mesh.transformed_vertices[index1], mesh.transformed_vertices[index2], P, interpolatedColor, pixelDepth) :
+						Utils::TriangleHitTest(mesh.transformed_vertices[index0], mesh.transformed_vertices[index2], mesh.transformed_vertices[index1], P, interpolatedColor, pixelDepth);
+
+					if (doesTriangleHit && m_pDepthBufferPixels[px + (py * m_Width)] > pixelDepth)
 					{
-						if (m_pDepthBufferPixels[px + (py * m_Width)] > pixelDepth)
-						{
-							m_pDepthBufferPixels[px + (py * m_Width)] = pixelDepth;
-							finalColor = interpolatedColor;
+						m_pDepthBufferPixels[px + (py * m_Width)] = pixelDepth;
+						finalColor = interpolatedColor;
 
-							//Update Color in Buffer
-							finalColor.MaxToOne();
-							m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
-								static_cast<uint8_t>(finalColor.r * 255),
-								static_cast<uint8_t>(finalColor.g * 255),
-								static_cast<uint8_t>(finalColor.b * 255));
-						}
-					}
-
-
-				}
-			}
-		}
-		else
-		{
-			for (size_t i = 0; i < mesh.indices.size() - 2; ++i)
-			{
-				for (int px{ mesh.bounding_boxes[i].xMin }; px < mesh.bounding_boxes[i].xMax; ++px)
-				{
-					for (int py{ mesh.bounding_boxes[i].yMin }; py < mesh.bounding_boxes[i].yMax; ++py)
-					{
-						Vector2 P{ px + 0.5f,py + 0.5f };
-
-						ColorRGB finalColor{}, interpolatedColor{};
-						float pixelDepth{};
-						const bool doesTriangleHit{ (i % 2 == 0) ?
-							Utils::TriangleHitTest(mesh.transformed_vertices[mesh.indices[i]], mesh.transformed_vertices[mesh.indices[i + 1]],
-							mesh.transformed_vertices[mesh.indices[i + 2]], P, interpolatedColor, pixelDepth) :
-						Utils::TriangleHitTest(mesh.transformed_vertices[mesh.indices[i]], mesh.transformed_vertices[mesh.indices[i + 2]],
-							mesh.transformed_vertices[mesh.indices[i + 1]], P, interpolatedColor, pixelDepth) };
-
-						if (doesTriangleHit)
-						{
-							if (m_pDepthBufferPixels[px + (py * m_Width)] > pixelDepth)
-							{
-								m_pDepthBufferPixels[px + (py * m_Width)] = pixelDepth;
-								finalColor = interpolatedColor;
-
-								//Update Color in Buffer
-								finalColor.MaxToOne();
-								m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
-									static_cast<uint8_t>(finalColor.r * 255),
-									static_cast<uint8_t>(finalColor.g * 255),
-									static_cast<uint8_t>(finalColor.b * 255));
-							}
-						}
-
-
+						// Update Color in Buffer
+						finalColor.MaxToOne();
+						m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+							static_cast<uint8_t>(finalColor.r * 255),
+							static_cast<uint8_t>(finalColor.g * 255),
+							static_cast<uint8_t>(finalColor.b * 255));
 					}
 				}
 			}
 		}
+
+
 	}
 
 #endif
@@ -249,7 +218,7 @@ void Renderer::NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<V
 void Renderer::VertexTransformationFunction(std::vector<Mesh>& meshes) const
 {
 	//Projection Stage
-	for(Mesh& mesh : meshes)
+	for (Mesh& mesh : meshes)
 	{
 		mesh.transformed_vertices.reserve(mesh.vertices.size());
 
@@ -277,53 +246,44 @@ void Renderer::VertexTransformationFunction(std::vector<Mesh>& meshes) const
 	}
 }
 
-void Renderer::TrianglesBoundingBox( std::vector<Mesh>& meshes) const
+void Renderer::TrianglesBoundingBox(std::vector<Mesh>& meshes) const
 {//should be calculated inside the mesh struct instead
 	for (Mesh& mesh : meshes)
 	{
 		mesh.bounding_boxes.clear();
+		const size_t numTriangles = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? mesh.indices.size() / 3 : mesh.indices.size() - 2;
+		mesh.bounding_boxes.reserve(numTriangles);
 
-		if(mesh.primitiveTopology == PrimitiveTopology::TriangleList)
+		for (size_t i = 0; i < numTriangles; ++i)
 		{
-			mesh.bounding_boxes.reserve(mesh.indices.size() / 3);
-			for (size_t i = 0; i < mesh.indices.size(); i += 3)
+			int minX, maxX, minY, maxY;
+			if (mesh.primitiveTopology == PrimitiveTopology::TriangleList)
 			{
-				int minX = static_cast<int>(std::min(mesh.transformed_vertices[mesh.indices[i]].position.x, std::min(mesh.transformed_vertices[mesh.indices[i + 1]].position.x, mesh.transformed_vertices[mesh.indices[i + 2]].position.x)) - 0.5f);
-				int maxX = static_cast<int>(std::max(mesh.transformed_vertices[mesh.indices[i]].position.x, std::max(mesh.transformed_vertices[mesh.indices[i + 1]].position.x, mesh.transformed_vertices[mesh.indices[i + 2]].position.x)) + 0.5f);
-				int minY = static_cast<int>(std::min(mesh.transformed_vertices[mesh.indices[i]].position.y, std::min(mesh.transformed_vertices[mesh.indices[i + 1]].position.y, mesh.transformed_vertices[mesh.indices[i + 2]].position.y)) - 0.5f);
-				int maxY = static_cast<int>(std::max(mesh.transformed_vertices[mesh.indices[i]].position.y, std::max(mesh.transformed_vertices[mesh.indices[i + 1]].position.y, mesh.transformed_vertices[mesh.indices[i + 2]].position.y)) + 0.5f);
-
-				// if statement of std::clamp from C++ 20
-				minX = std::ranges::clamp(minX, 0, m_Width);
-				maxX = std::ranges::clamp(maxX, 0, m_Width);
-				minY = std::ranges::clamp(minY, 0, m_Height);
-				maxY = std::ranges::clamp(maxY, 0, m_Height);
-				mesh.bounding_boxes.push_back(BoundingBox{ minX,maxX,minY,maxY });
+				minX = static_cast<int>(std::min(mesh.transformed_vertices[mesh.indices[i * 3]].position.x, std::min(mesh.transformed_vertices[mesh.indices[i * 3 + 1]].position.x, mesh.transformed_vertices[mesh.indices[i * 3 + 2]].position.x)) - 0.5f);
+				maxX = static_cast<int>(std::max(mesh.transformed_vertices[mesh.indices[i * 3]].position.x, std::max(mesh.transformed_vertices[mesh.indices[i * 3 + 1]].position.x, mesh.transformed_vertices[mesh.indices[i * 3 + 2]].position.x)) + 0.5f);
+				minY = static_cast<int>(std::min(mesh.transformed_vertices[mesh.indices[i * 3]].position.y, std::min(mesh.transformed_vertices[mesh.indices[i * 3 + 1]].position.y, mesh.transformed_vertices[mesh.indices[i * 3 + 2]].position.y)) - 0.5f);
+				maxY = static_cast<int>(std::max(mesh.transformed_vertices[mesh.indices[i * 3]].position.y, std::max(mesh.transformed_vertices[mesh.indices[i * 3 + 1]].position.y, mesh.transformed_vertices[mesh.indices[i * 3 + 2]].position.y)) + 0.5f);
 			}
-		}
-		else
-		{
-			mesh.bounding_boxes.reserve(mesh.indices.size() - 2);
-			for (size_t i = 0; i < mesh.indices.size() - 2; ++i)
+			else
 			{
-				int minX = static_cast<int>(std::min(mesh.transformed_vertices[mesh.indices[i]].position.x, std::min(mesh.transformed_vertices[mesh.indices[i + 1]].position.x, mesh.transformed_vertices[mesh.indices[i + 2]].position.x)) - 0.5f);
-				int maxX = static_cast<int>(std::max(mesh.transformed_vertices[mesh.indices[i]].position.x, std::max(mesh.transformed_vertices[mesh.indices[i + 1]].position.x, mesh.transformed_vertices[mesh.indices[i + 2]].position.x)) + 0.5f);
-				int minY = static_cast<int>(std::min(mesh.transformed_vertices[mesh.indices[i]].position.y, std::min(mesh.transformed_vertices[mesh.indices[i + 1]].position.y, mesh.transformed_vertices[mesh.indices[i + 2]].position.y)) - 0.5f);
-				int maxY = static_cast<int>(std::max(mesh.transformed_vertices[mesh.indices[i]].position.y, std::max(mesh.transformed_vertices[mesh.indices[i + 1]].position.y, mesh.transformed_vertices[mesh.indices[i + 2]].position.y)) + 0.5f);
-
-				// if statement of std::clamp from C++ 20
-				minX = std::ranges::clamp(minX, 0, m_Width);
-				maxX = std::ranges::clamp(maxX, 0, m_Width);
-				minY = std::ranges::clamp(minY, 0, m_Height);
-				maxY = std::ranges::clamp(maxY, 0, m_Height);
-				mesh.bounding_boxes.push_back(BoundingBox{ minX,maxX,minY,maxY });
+				minX = static_cast<int>(std::min(mesh.transformed_vertices[mesh.indices[i]].position.x, std::min(mesh.transformed_vertices[mesh.indices[i + 1]].position.x, mesh.transformed_vertices[mesh.indices[i + 2]].position.x)) - 0.5f);
+				maxX = static_cast<int>(std::max(mesh.transformed_vertices[mesh.indices[i]].position.x, std::max(mesh.transformed_vertices[mesh.indices[i + 1]].position.x, mesh.transformed_vertices[mesh.indices[i + 2]].position.x)) + 0.5f);
+				minY = static_cast<int>(std::min(mesh.transformed_vertices[mesh.indices[i]].position.y, std::min(mesh.transformed_vertices[mesh.indices[i + 1]].position.y, mesh.transformed_vertices[mesh.indices[i + 2]].position.y)) - 0.5f);
+				maxY = static_cast<int>(std::max(mesh.transformed_vertices[mesh.indices[i]].position.y, std::max(mesh.transformed_vertices[mesh.indices[i + 1]].position.y, mesh.transformed_vertices[mesh.indices[i + 2]].position.y)) + 0.5f);
 			}
+
+			// if statement of std::clamp from C++ 20
+			minX = std::ranges::clamp(minX, 0, m_Width);
+			maxX = std::ranges::clamp(maxX, 0, m_Width);
+			minY = std::ranges::clamp(minY, 0, m_Height);
+			maxY = std::ranges::clamp(maxY, 0, m_Height);
+			mesh.bounding_boxes.push_back(BoundingBox{ minX,maxX,minY,maxY });
 		}
+
 	}
-
 }
 
-bool Renderer::SaveBufferToImage() const
-{
-	return SDL_SaveBMP(m_pBackBuffer, "Rasterizer_ColorBuffer.bmp");
-}
+	bool Renderer::SaveBufferToImage() const
+	{
+		return SDL_SaveBMP(m_pBackBuffer, "Rasterizer_ColorBuffer.bmp");
+	}
