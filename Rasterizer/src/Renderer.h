@@ -43,6 +43,7 @@ namespace dae
 		SDL_Surface* m_pBackBuffer{ nullptr };
 		uint32_t* m_pBackBufferPixels{};
 		float* m_pDepthBufferPixels{};
+		const Texture* m_pTexture;
 
 		std::vector<Mesh> meshes_world;
 #if defined(MULTI_THREADING)

@@ -61,6 +61,15 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	//Initialize
 	SDL_GetWindowSize(pWindow, &m_Width, &m_Height);
 
+	try
+	{
+		//loading texture
+		m_pTexture = Texture::LoadFromFile("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/uv_grid_2.png");
+	}
+	catch (const FileNotFound& ex) {
+		std::cout << "File not found \n";
+	}
+
 	//Create Buffers
 	m_pFrontBuffer = SDL_GetWindowSurface(pWindow);
 	m_pBackBuffer = SDL_CreateRGBSurface(0, m_Width, m_Height, 32, 0, 0, 0, 0);
@@ -88,6 +97,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 Renderer::~Renderer()
 {
 	delete[] m_pDepthBufferPixels;
+	delete m_pTexture;
 }
 
 void Renderer::Update(Timer* pTimer)
@@ -114,15 +124,6 @@ void Renderer::Render()
 	VertexTransformationFunction(meshes_world);
 	TrianglesBoundingBox(meshes_world);
 
-	Texture* texture{ nullptr };
-	try
-	{
-		//loading texture
-		texture = Texture::LoadFromFile("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/uv_grid_2.png");
-	}
-	catch (const FileNotFound& ex) {
-		std::cout << "File not found \n";
-	}
 	//RENDER LOGIC
 #if defined(MULTI_THREADING)
 	std::for_each(std::execution::par, m_ImageHorizontalIterator.begin(), m_ImageHorizontalIterator.end(), [&](uint32_t px)
@@ -189,7 +190,7 @@ void Renderer::Render()
 					if (doesTriangleHit && m_pDepthBufferPixels[px + (py * m_Width)] > pixelDepth)
 					{
 						m_pDepthBufferPixels[px + (py * m_Width)] = pixelDepth;
-						finalColor = texture->Sample(interpolatedUV);
+						finalColor = m_pTexture->Sample(interpolatedUV);
 
 						// Update Color in Buffer
 						finalColor.MaxToOne();
@@ -211,7 +212,7 @@ void Renderer::Render()
 	SDL_UnlockSurface(m_pBackBuffer);
 	SDL_BlitSurface(m_pBackBuffer, 0, m_pFrontBuffer, 0);
 	SDL_UpdateWindowSurface(m_pWindow);
-	delete texture;
+	
 }
 
 void Renderer::NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
