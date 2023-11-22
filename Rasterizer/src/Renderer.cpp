@@ -9,6 +9,7 @@
 #include "Utils.h"
 #include <algorithm>
 #include <execution>
+#include <iostream>
 
 using namespace dae;
 
@@ -19,15 +20,15 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	{
 		Mesh{
 				{
-				Vertex{ Vector3{-3,3,-2}},
-				Vertex{ Vector3{0,3,-2}},
-				Vertex{ Vector3{3,3,-2}},
-				Vertex{ Vector3{-3,0,-2}},
-				Vertex{ Vector3{0,0,-2}},
-				Vertex{ Vector3{3,0,-2}},
-				Vertex{ Vector3{-3,-3,-2}},
-				Vertex{ Vector3{0,-3,-2}},
-				Vertex{ Vector3{3,-3,-2}},
+				Vertex{ Vector3{-3,3,-2}, Vector2{0,0}},
+				Vertex{ Vector3{0,3,-2}, Vector2{0.5f,0}},
+				Vertex{ Vector3{3,3,-2}, Vector2{1,0}},
+				Vertex{ Vector3{-3,0,-2}, Vector2{0,0.5f}},
+				Vertex{ Vector3{0,0,-2}, Vector2{0.5f,0.5f}},
+				Vertex{ Vector3{3,0,-2}, Vector2{1,0.5f}},
+				Vertex{ Vector3{-3,-3,-2}, Vector2{0,1}},
+				Vertex{ Vector3{0,-3,-2}, Vector2{0.5f,1}},
+				Vertex{ Vector3{3,-3,-2}, Vector2{1,1}},
 				},
 				{
 					/*3,0,1,  1,4,3,  4,1,2,
@@ -113,6 +114,15 @@ void Renderer::Render()
 	VertexTransformationFunction(meshes_world);
 	TrianglesBoundingBox(meshes_world);
 
+	Texture* texture{ nullptr };
+	try
+	{
+		//loading texture
+		texture = Texture::LoadFromFile("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/uv_grid_2.png");
+	}
+	catch (const FileNotFound& ex) {
+		std::cout << "File not found \n";
+	}
 	//RENDER LOGIC
 #if defined(MULTI_THREADING)
 	std::for_each(std::execution::par, m_ImageHorizontalIterator.begin(), m_ImageHorizontalIterator.end(), [&](uint32_t px)
@@ -168,17 +178,18 @@ void Renderer::Render()
 				{
 					const Vector2 P(px + 0.5f, py + 0.5f);
 
-					ColorRGB finalColor, interpolatedColor;
+					ColorRGB finalColor;
 					float pixelDepth;
+					Vector2 interpolatedUV{};
 
 					const bool doesTriangleHit = (i % 2 == 0 || mesh.primitiveTopology == PrimitiveTopology::TriangleList) ?
-						Utils::TriangleHitTest(mesh.transformed_vertices[index0], mesh.transformed_vertices[index1], mesh.transformed_vertices[index2], P, interpolatedColor, pixelDepth) :
-						Utils::TriangleHitTest(mesh.transformed_vertices[index0], mesh.transformed_vertices[index2], mesh.transformed_vertices[index1], P, interpolatedColor, pixelDepth);
+						Utils::TriangleHitTest(mesh.transformed_vertices[index0], mesh.transformed_vertices[index1], mesh.transformed_vertices[index2], P, interpolatedUV, pixelDepth) :
+						Utils::TriangleHitTest(mesh.transformed_vertices[index0], mesh.transformed_vertices[index2], mesh.transformed_vertices[index1], P, interpolatedUV, pixelDepth);
 
 					if (doesTriangleHit && m_pDepthBufferPixels[px + (py * m_Width)] > pixelDepth)
 					{
 						m_pDepthBufferPixels[px + (py * m_Width)] = pixelDepth;
-						finalColor = interpolatedColor;
+						finalColor = texture->Sample(interpolatedUV);
 
 						// Update Color in Buffer
 						finalColor.MaxToOne();
@@ -200,6 +211,7 @@ void Renderer::Render()
 	SDL_UnlockSurface(m_pBackBuffer);
 	SDL_BlitSurface(m_pBackBuffer, 0, m_pFrontBuffer, 0);
 	SDL_UpdateWindowSurface(m_pWindow);
+	delete texture;
 }
 
 void Renderer::NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const

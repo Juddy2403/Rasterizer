@@ -174,7 +174,7 @@ namespace dae
 #endif
 		}
 
-		bool TriangleHitTest(const Vertex& v0, const Vertex& v1, const Vertex& v2, const Vector2& pixelVector, ColorRGB& color, float& pixelDepth)
+		bool TriangleHitTest(const Vertex& v0, const Vertex& v1, const Vertex& v2, const Vector2& pixelVector, Vector2& uv, float& pixelDepth)
 		{
 
 			const Vector2 edge0{ v0.position,v1.position };
@@ -196,7 +196,7 @@ namespace dae
 			const float W0{ cross1 / doubleArea };
 			const float W1{ cross2 / doubleArea };
 
-			color = v0.color * W0 + v1.color * W1 + v2.color * W2;
+			uv = v0.uv * W0 + v1.uv * W1 + v2.uv * W2;
 			pixelDepth = v0.position.z * W0 + v1.position.z * W1 + v2.position.z * W2;
 			if ((cross0 >= 0 && cross1 >= 0 && cross2 >= 0) || (cross0 <= 0 && cross1 <= 0 && cross2 <= 0)) return true;
 

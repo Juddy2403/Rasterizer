@@ -3,6 +3,8 @@
 #include <string>
 #include "ColorRGB.h"
 
+class FileNotFound {};
+
 namespace dae
 {
 	struct Vector2;

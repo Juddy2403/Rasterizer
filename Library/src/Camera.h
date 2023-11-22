@@ -5,7 +5,7 @@
 
 #include "Maths.h"
 #include "Timer.h"
-#include <iostream>
+
 namespace dae
 {
 	struct Camera

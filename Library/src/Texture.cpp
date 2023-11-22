@@ -2,6 +2,8 @@
 #include "Vector2.h"
 #include <SDL_image.h>
 
+
+
 namespace dae
 {
 	Texture::Texture(SDL_Surface* pSurface) :
@@ -24,15 +26,19 @@ namespace dae
 		//TODO
 		//Load SDL_Surface using IMG_LOAD
 		//Create & Return a new Texture Object (using SDL_Surface)
-
-		return nullptr;
+		Texture* texture{ new Texture{IMG_Load(path.c_str()) } };
+		if (texture->m_pSurface == nullptr) throw FileNotFound();
+		return texture;
 	}
 
 	ColorRGB Texture::Sample(const Vector2& uv) const
 	{
 		//TODO
 		//Sample the correct texel for the given uv
-
-		return {};
+		Uint8 r{}, g{}, b{};
+		const int uIdx{ static_cast<int>(uv.x * m_pSurface->w) }, vIdx{ static_cast<int>(uv.y * m_pSurface->h) };
+		SDL_GetRGB(m_pSurfacePixels[uIdx + (vIdx * m_pSurface->h)], m_pSurface->format, &r, &g, &b);
+		ColorRGB color{ (r / 255.f),(g / 255.f) ,(b / 255.f) };
+		return color;
 	}
 }

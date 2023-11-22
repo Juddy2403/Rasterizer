@@ -26,10 +26,10 @@ namespace dae
 	struct Vertex
 	{
 		Vector3 position{};
+		Vector2 uv{}; //W2
 		ColorRGB color{colors::White};
 
 		//Vertex(Vector3 pos) : position{ pos } {}
-		//Vector2 uv{}; //W2
 		//Vector3 normal{}; //W4
 		//Vector3 tangent{}; //W4
 		//Vector3 viewDirection{}; //W4
