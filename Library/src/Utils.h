@@ -196,8 +196,11 @@ namespace dae
 			const float W0{ cross1 / doubleArea };
 			const float W1{ cross2 / doubleArea };
 
-			uv = v0.uv * W0 + v1.uv * W1 + v2.uv * W2;
-			pixelDepth = v0.position.z * W0 + v1.position.z * W1 + v2.position.z * W2;
+			//uv = v0.uv * W0 + v1.uv * W1 + v2.uv * W2;
+			//pixelDepth = v0.position.z * W0 + v1.position.z * W1 + v2.position.z * W2;
+			pixelDepth = 1.f / (1.f / v0.position.z * W0 + 1.f / v1.position.z * W1 + 1.f / v2.position.z * W2);
+			uv = (v0.uv * W0 / v0.position.z + v1.uv * W1 / v1.position.z + v2.uv * W2 / v2.position.z) * pixelDepth;
+		
 			if ((cross0 >= 0 && cross1 >= 0 && cross2 >= 0) || (cross0 <= 0 && cross1 <= 0 && cross2 <= 0)) return true;
 
 			return false;

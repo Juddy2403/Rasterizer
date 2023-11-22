@@ -295,7 +295,7 @@ void Renderer::TrianglesBoundingBox(std::vector<Mesh>& meshes) const
 	}
 }
 
-	bool Renderer::SaveBufferToImage() const
-	{
-		return SDL_SaveBMP(m_pBackBuffer, "Rasterizer_ColorBuffer.bmp");
-	}
+bool Renderer::SaveBufferToImage() const
+{
+	return SDL_SaveBMP(m_pBackBuffer, "Rasterizer_ColorBuffer.bmp");
+}
