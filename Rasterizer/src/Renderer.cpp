@@ -103,6 +103,8 @@ Renderer::~Renderer()
 void Renderer::Update(Timer* pTimer)
 {
 	m_Camera.Update(pTimer);
+	VertexTransformationFunction(meshes_world);
+	TrianglesBoundingBox(meshes_world);
 }
 
 void Renderer::Render()
@@ -120,9 +122,6 @@ void Renderer::Render()
 		static_cast<uint8_t>(100.f * 255),
 		static_cast<uint8_t>(100.f * 255))
 	);
-
-	VertexTransformationFunction(meshes_world);
-	TrianglesBoundingBox(meshes_world);
 
 	//RENDER LOGIC
 #if defined(MULTI_THREADING)
@@ -161,50 +160,51 @@ void Renderer::Render()
 				});
 		});
 #else
-	for (Mesh& mesh : meshes_world)
-	{
-		const size_t numTriangles = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? mesh.indices.size() / 3 : mesh.indices.size() - 2;
+for (Mesh& mesh : meshes_world)
+{
+    const size_t numTriangles = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? mesh.indices.size() / 3 : mesh.indices.size() - 2;
 
-		for (size_t i = 0; i < numTriangles; ++i)
-		{
-			const size_t index0 = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? mesh.indices[i * 3] : mesh.indices[i];
-			const size_t index1 = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? mesh.indices[i * 3 + 1] : mesh.indices[i + 1];
-			const size_t index2 = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? mesh.indices[i * 3 + 2] : mesh.indices[i + 2];
+    for (size_t i = 0; i < numTriangles; ++i)
+    {
+        const size_t baseIndex = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? i * 3 : i;
+        const size_t index0 = mesh.indices[baseIndex];
+        const size_t index1 = mesh.indices[baseIndex + 1];
+        const size_t index2 = mesh.indices[baseIndex + 2];
 
-			const BoundingBox& boundingBox = mesh.bounding_boxes[i];
+        const BoundingBox& boundingBox = mesh.bounding_boxes[i];
 
-			for (int px = boundingBox.xMin; px < boundingBox.xMax; ++px)
-			{
-				for (int py = boundingBox.yMin; py < boundingBox.yMax; ++py)
-				{
-					const Vector2 P(px + 0.5f, py + 0.5f);
+        for (int px = boundingBox.xMin; px < boundingBox.xMax; ++px)
+        {
+            for (int py = boundingBox.yMin; py < boundingBox.yMax; ++py)
+            {
+                const Vector2 P(px + 0.5f, py + 0.5f);
 
-					ColorRGB finalColor;
-					float pixelDepth;
-					Vector2 interpolatedUV{};
+                ColorRGB finalColor;
+                float pixelDepth;
+                Vector2 interpolatedUV{};
 
-					const bool doesTriangleHit = (i % 2 == 0 || mesh.primitiveTopology == PrimitiveTopology::TriangleList) ?
-						Utils::TriangleHitTest(mesh.transformed_vertices[index0], mesh.transformed_vertices[index1], mesh.transformed_vertices[index2], P, interpolatedUV, pixelDepth) :
-						Utils::TriangleHitTest(mesh.transformed_vertices[index0], mesh.transformed_vertices[index2], mesh.transformed_vertices[index1], P, interpolatedUV, pixelDepth);
+                const bool doesTriangleHit = (i % 2 == 0 || mesh.primitiveTopology == PrimitiveTopology::TriangleList) ?
+                    Utils::TriangleHitTest(mesh.transformed_vertices[index0], mesh.transformed_vertices[index1], mesh.transformed_vertices[index2], P, interpolatedUV, pixelDepth) :
+                    Utils::TriangleHitTest(mesh.transformed_vertices[index0], mesh.transformed_vertices[index2], mesh.transformed_vertices[index1], P, interpolatedUV, pixelDepth);
 
-					if (doesTriangleHit && m_pDepthBufferPixels[px + (py * m_Width)] > pixelDepth)
-					{
-						m_pDepthBufferPixels[px + (py * m_Width)] = pixelDepth;
-						finalColor = m_pTexture->Sample(interpolatedUV);
+                const int bufferIndex = px + (py * m_Width);
+                if (doesTriangleHit && m_pDepthBufferPixels[bufferIndex] > pixelDepth)
+                {
+                    m_pDepthBufferPixels[bufferIndex] = pixelDepth;
+                    finalColor = m_pTexture->Sample(interpolatedUV);
 
-						// Update Color in Buffer
-						finalColor.MaxToOne();
-						m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
-							static_cast<uint8_t>(finalColor.r * 255),
-							static_cast<uint8_t>(finalColor.g * 255),
-							static_cast<uint8_t>(finalColor.b * 255));
-					}
-				}
-			}
-		}
+                    // Update Color in Buffer
+                    finalColor.MaxToOne();
+                    m_pBackBufferPixels[bufferIndex] = SDL_MapRGB(m_pBackBuffer->format,
+                        static_cast<uint8_t>(finalColor.r * 255),
+                        static_cast<uint8_t>(finalColor.g * 255),
+                        static_cast<uint8_t>(finalColor.b * 255));
+                }
+            }
+        }
+    }
+}
 
-
-	}
 
 #endif
 	//@END

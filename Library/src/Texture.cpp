@@ -33,10 +33,14 @@ namespace dae
 
 	ColorRGB Texture::Sample(const Vector2& uv) const
 	{
-		//TODO
 		//Sample the correct texel for the given uv
 		Uint8 r{}, g{}, b{};
-		const int uIdx{ static_cast<int>(uv.x * m_pSurface->w) }, vIdx{ static_cast<int>(uv.y * m_pSurface->h) };
+		int uIdx{ static_cast<int>(uv.x * m_pSurface->w) }, vIdx{ static_cast<int>(uv.y * m_pSurface->h) };
+
+		// Ensure indices are within bounds
+		uIdx = std::clamp(uIdx, 0, m_pSurface->w - 1);
+		vIdx = std::clamp(vIdx, 0, m_pSurface->h - 1);
+
 		SDL_GetRGB(m_pSurfacePixels[uIdx + (vIdx * m_pSurface->h)], m_pSurface->format, &r, &g, &b);
 		ColorRGB color{ (r / 255.f),(g / 255.f) ,(b / 255.f) };
 		return color;

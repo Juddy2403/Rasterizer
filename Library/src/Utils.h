@@ -176,35 +176,43 @@ namespace dae
 
 		bool TriangleHitTest(const Vertex& v0, const Vertex& v1, const Vertex& v2, const Vector2& pixelVector, Vector2& uv, float& pixelDepth)
 		{
+			// Calculate vectors and cross products
+			const Vector2 edge0 = v1.position - v0.position;
+			const Vector2 edge1 = v2.position - v1.position;
+			const Vector2 edge2 = v0.position - v2.position;
 
-			const Vector2 edge0{ v0.position,v1.position };
-			const Vector2 edge1{ v1.position,v2.position };
-			const Vector2 edge2{ v2.position,v0.position };
+			const Vector2 vertToPixel0 = pixelVector - v0.position;
+			const Vector2 vertToPixel1 = pixelVector - v1.position;
+			const Vector2 vertToPixel2 = pixelVector - v2.position;
 
-			const Vector2 vertToPixel0{ v0.position,pixelVector };
-			const Vector2 vertToPixel1{ v1.position,pixelVector };
-			const Vector2 vertToPixel2{ v2.position,pixelVector };
-
-			const float cross0{ Vector2::Cross(edge0,vertToPixel0) };
-			const float cross1{ Vector2::Cross(edge1,vertToPixel1) };
+			const float cross0 = Vector2::Cross(edge0, vertToPixel0);
+			const float cross1 = Vector2::Cross(edge1, vertToPixel1);
+			// Check if the pixel is inside the triangle
 			if (cross0 * cross1 < 0) return false;
-			const float cross2{ Vector2::Cross(edge2,vertToPixel2) };
+			const float cross2 = Vector2::Cross(edge2, vertToPixel2);
 
-			//Calculating each vertices' weight
-			const float doubleArea{ Vector2::Cross(edge0,edge1) };
-			const float W2{ cross0 / doubleArea };
-			const float W0{ cross1 / doubleArea };
-			const float W1{ cross2 / doubleArea };
+			// Check if the pixel is inside the triangle
+			if (cross0 * cross2 < 0) return false;
 
-			//uv = v0.uv * W0 + v1.uv * W1 + v2.uv * W2;
-			//pixelDepth = v0.position.z * W0 + v1.position.z * W1 + v2.position.z * W2;
-			pixelDepth = 1.f / (1.f / v0.position.z * W0 + 1.f / v1.position.z * W1 + 1.f / v2.position.z * W2);
-			uv = (v0.uv * W0 / v0.position.z + v1.uv * W1 / v1.position.z + v2.uv * W2 / v2.position.z) * pixelDepth;
-		
-			if ((cross0 >= 0 && cross1 >= 0 && cross2 >= 0) || (cross0 <= 0 && cross1 <= 0 && cross2 <= 0)) return true;
+			// Calculate barycentric coordinates
+			const float doubleArea = Vector2::Cross(edge0, edge1);
+			const float W2 = cross0 / doubleArea;
+			const float W0 = cross1 / doubleArea;
+			const float W1 = cross2 / doubleArea;
 
-			return false;
+			// Calculate interpolated values
+			const float recipZ0 = 1.0f / v0.position.z;
+			const float recipZ1 = 1.0f / v1.position.z;
+			const float recipZ2 = 1.0f / v2.position.z;
+
+			const float recipSumZ = 1.0f / (W0 * recipZ0 + W1 * recipZ1 + W2 * recipZ2);
+
+			uv = (v0.uv * W0 * recipZ0 + v1.uv * W1 * recipZ1 + v2.uv * W2 * recipZ2) * recipSumZ;
+			pixelDepth = recipSumZ;
+
+			return true;
 		}
+
 #pragma warning(pop)
 	}
 }
