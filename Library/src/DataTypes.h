@@ -61,7 +61,7 @@ namespace dae
 		std::vector<Vertex_Out> vertices_out{};
 		Matrix worldMatrix{};
 
-		std::vector<Vertex> transformed_vertices{};
+		//std::vector<Vertex> transformed_vertices{};
 		std::vector<BoundingBox> bounding_boxes{};
 	};
 }

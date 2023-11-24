@@ -104,8 +104,11 @@ void Renderer::Update(Timer* pTimer)
 {
 	m_Camera.Update(pTimer);
 	//VertexTransformationFunction(meshes_world);
-	VertexMatrixTransform(meshes_world);
-	TrianglesBoundingBox(meshes_world);
+	if(meshes_world[0].vertices_out.size() == 0)
+	{
+		VertexMatrixTransform(meshes_world);
+		TrianglesBoundingBox(meshes_world);
+	}
 }
 
 void Renderer::Render()
@@ -229,36 +232,36 @@ void Renderer::NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<V
 	}
 }
 
-void Renderer::VertexTransformationFunction(std::vector<Mesh>& meshes) const
-{
-	//Projection Stage
-	for (Mesh& mesh : meshes)
-	{
-		mesh.transformed_vertices.reserve(mesh.vertices.size());
-
-		for (size_t i = 0; i < mesh.vertices.size(); i++)
-		{
-			mesh.transformed_vertices.push_back(mesh.vertices[i]);
-
-			//pos to view space
-			mesh.transformed_vertices[i].position = m_Camera.invViewMatrix.TransformPoint(mesh.vertices[i].position);
-
-			//projecting view space
-			mesh.transformed_vertices[i].position.x /= mesh.transformed_vertices[i].position.z;
-			mesh.transformed_vertices[i].position.y /= mesh.transformed_vertices[i].position.z;
-
-			//applying camera settings
-			mesh.transformed_vertices[i].position.x /= (m_AspectRatio * m_Camera.fov);
-			mesh.transformed_vertices[i].position.y /= m_Camera.fov;
-
-			//NDC transformation
-			const float vertX{ (mesh.transformed_vertices[i].position.x + 1) / 2.f * m_Width };
-			const float vertY{ (1 - mesh.transformed_vertices[i].position.y) / 2.f * m_Height };
-			mesh.transformed_vertices[i].position.x = vertX;
-			mesh.transformed_vertices[i].position.y = vertY;
-		}
-	}
-}
+//void Renderer::VertexTransformationFunction(std::vector<Mesh>& meshes) const
+//{
+//	//Projection Stage
+//	for (Mesh& mesh : meshes)
+//	{
+//		mesh.transformed_vertices.reserve(mesh.vertices.size());
+//
+//		for (size_t i = 0; i < mesh.vertices.size(); i++)
+//		{
+//			mesh.transformed_vertices.push_back(mesh.vertices[i]);
+//
+//			//pos to view space
+//			mesh.transformed_vertices[i].position = m_Camera.invViewMatrix.TransformPoint(mesh.vertices[i].position);
+//
+//			//projecting view space
+//			mesh.transformed_vertices[i].position.x /= mesh.transformed_vertices[i].position.z;
+//			mesh.transformed_vertices[i].position.y /= mesh.transformed_vertices[i].position.z;
+//
+//			//applying camera settings
+//			mesh.transformed_vertices[i].position.x /= (m_AspectRatio * m_Camera.fov);
+//			mesh.transformed_vertices[i].position.y /= m_Camera.fov;
+//
+//			//NDC transformation
+//			const float vertX{ (mesh.transformed_vertices[i].position.x + 1) / 2.f * m_Width };
+//			const float vertY{ (1 - mesh.transformed_vertices[i].position.y) / 2.f * m_Height };
+//			mesh.transformed_vertices[i].position.x = vertX;
+//			mesh.transformed_vertices[i].position.y = vertY;
+//		}
+//	}
+//}
 
 void Renderer::VertexMatrixTransform(std::vector<Mesh>& meshes) const
 {
@@ -267,8 +270,6 @@ void Renderer::VertexMatrixTransform(std::vector<Mesh>& meshes) const
 	{
 		mesh.vertices_out.clear();
 		mesh.vertices_out.reserve(mesh.vertices.size());
-		Matrix worldMatrix{};
-		//viewMatrix{};
 		//Calculating the projection matrix
 		const float x{ 1.f / (m_AspectRatio * m_Camera.fov) };
 		const float y{ 1.f / m_Camera.fov };
@@ -283,7 +284,7 @@ void Renderer::VertexMatrixTransform(std::vector<Mesh>& meshes) const
 		};
 
 		//Getting the final transform matrix
-		const Matrix worldViewProjectionMatrix{ worldMatrix * m_Camera.invViewMatrix * projectionMatrix };
+		const Matrix worldViewProjectionMatrix{ m_Camera.invViewMatrix * projectionMatrix };
 
 		for (size_t i = 0; i < mesh.vertices.size(); i++)
 		{
@@ -295,6 +296,12 @@ void Renderer::VertexMatrixTransform(std::vector<Mesh>& meshes) const
 			mesh.vertices_out[i].position.x /= mesh.vertices_out[i].position.w;
 			mesh.vertices_out[i].position.y /= mesh.vertices_out[i].position.w;
 			mesh.vertices_out[i].position.z /= mesh.vertices_out[i].position.w;
+
+			const float vertX{ (mesh.vertices_out[i].position.x + 1) / 2.f * m_Width };
+			const float vertY{ (1 - mesh.vertices_out[i].position.y) / 2.f * m_Height };
+			mesh.vertices_out[i].position.x = vertX;
+			mesh.vertices_out[i].position.y = vertY;
+
 		}
 	}
 }
