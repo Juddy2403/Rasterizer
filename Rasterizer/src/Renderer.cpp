@@ -259,6 +259,45 @@ void Renderer::VertexTransformationFunction(std::vector<Mesh>& meshes) const
 	}
 }
 
+void Renderer::VertexMatrixTransform(std::vector<Mesh>& meshes) const
+{
+	//Projection Stage
+	for (Mesh& mesh : meshes)
+	{
+		mesh.vertices_out.clear();
+		mesh.vertices_out.reserve(mesh.vertices.size());
+		Matrix worldMatrix{};
+		//viewMatrix{};
+		//Calculating the projection matrix
+		const float x{ 1.f / (m_AspectRatio * m_Camera.fov) };
+		const float y{ 1.f / m_Camera.fov };
+		const float renderDist{ m_Camera.far - m_Camera.near };
+		const float z1{ m_Camera.far / renderDist };
+		const float z2{ -(m_Camera.far * m_Camera.near) / renderDist };
+		const Matrix projectionMatrix{
+			Vector4{x,0,0,0},
+			Vector4{0,y,0,0},
+			Vector4{0,0,z1,1},
+			Vector4{0,0,z2,0}
+		};
+
+		//Getting the final transform matrix
+		const Matrix worldViewProjectionMatrix{ worldMatrix * m_Camera.invViewMatrix * projectionMatrix };
+
+		for (size_t i = 0; i < mesh.vertices.size(); i++)
+		{
+			mesh.vertices_out.push_back(Vertex_Out{ Vector4{mesh.vertices[i].position,0}, mesh.vertices[i].color,mesh.vertices[i].uv });
+			mesh.vertices_out[i].position = worldViewProjectionMatrix.TransformPoint
+			(Vector4{ mesh.vertices[i].position,1 });
+
+			//NDC transformation
+			mesh.vertices_out[i].position.x /= mesh.vertices_out[i].position.w;
+			mesh.vertices_out[i].position.y /= mesh.vertices_out[i].position.w;
+			mesh.vertices_out[i].position.z /= mesh.vertices_out[i].position.w;
+		}
+	}
+}
+
 void Renderer::TrianglesBoundingBox(std::vector<Mesh>& meshes) const
 {//should be calculated inside the mesh struct instead
 	for (Mesh& mesh : meshes)
