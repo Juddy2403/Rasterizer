@@ -103,7 +103,8 @@ Renderer::~Renderer()
 void Renderer::Update(Timer* pTimer)
 {
 	m_Camera.Update(pTimer);
-	VertexTransformationFunction(meshes_world);
+	//VertexTransformationFunction(meshes_world);
+	VertexMatrixTransform(meshes_world);
 	TrianglesBoundingBox(meshes_world);
 }
 
@@ -184,8 +185,8 @@ for (Mesh& mesh : meshes_world)
                 Vector2 interpolatedUV{};
 
                 const bool doesTriangleHit = (i % 2 == 0 || mesh.primitiveTopology == PrimitiveTopology::TriangleList) ?
-                    Utils::TriangleHitTest(mesh.transformed_vertices[index0], mesh.transformed_vertices[index1], mesh.transformed_vertices[index2], P, interpolatedUV, pixelDepth) :
-                    Utils::TriangleHitTest(mesh.transformed_vertices[index0], mesh.transformed_vertices[index2], mesh.transformed_vertices[index1], P, interpolatedUV, pixelDepth);
+                    Utils::TriangleHitTest(mesh.vertices_out[index0], mesh.vertices_out[index1], mesh.vertices_out[index2], P, interpolatedUV, pixelDepth) :
+                    Utils::TriangleHitTest(mesh.vertices_out[index0], mesh.vertices_out[index2], mesh.vertices_out[index1], P, interpolatedUV, pixelDepth);
 
                 const int bufferIndex = px + (py * m_Width);
                 if (doesTriangleHit && m_pDepthBufferPixels[bufferIndex] > pixelDepth)
@@ -311,17 +312,17 @@ void Renderer::TrianglesBoundingBox(std::vector<Mesh>& meshes) const
 			int minX, maxX, minY, maxY;
 			if (mesh.primitiveTopology == PrimitiveTopology::TriangleList)
 			{
-				minX = static_cast<int>(std::min(mesh.transformed_vertices[mesh.indices[i * 3]].position.x, std::min(mesh.transformed_vertices[mesh.indices[i * 3 + 1]].position.x, mesh.transformed_vertices[mesh.indices[i * 3 + 2]].position.x)) - 0.5f);
-				maxX = static_cast<int>(std::max(mesh.transformed_vertices[mesh.indices[i * 3]].position.x, std::max(mesh.transformed_vertices[mesh.indices[i * 3 + 1]].position.x, mesh.transformed_vertices[mesh.indices[i * 3 + 2]].position.x)) + 0.5f);
-				minY = static_cast<int>(std::min(mesh.transformed_vertices[mesh.indices[i * 3]].position.y, std::min(mesh.transformed_vertices[mesh.indices[i * 3 + 1]].position.y, mesh.transformed_vertices[mesh.indices[i * 3 + 2]].position.y)) - 0.5f);
-				maxY = static_cast<int>(std::max(mesh.transformed_vertices[mesh.indices[i * 3]].position.y, std::max(mesh.transformed_vertices[mesh.indices[i * 3 + 1]].position.y, mesh.transformed_vertices[mesh.indices[i * 3 + 2]].position.y)) + 0.5f);
+				minX = static_cast<int>(std::min(mesh.vertices_out[mesh.indices[i * 3]].position.x, std::min(mesh.vertices_out[mesh.indices[i * 3 + 1]].position.x, mesh.vertices_out[mesh.indices[i * 3 + 2]].position.x)) - 0.5f);
+				maxX = static_cast<int>(std::max(mesh.vertices_out[mesh.indices[i * 3]].position.x, std::max(mesh.vertices_out[mesh.indices[i * 3 + 1]].position.x, mesh.vertices_out[mesh.indices[i * 3 + 2]].position.x)) + 0.5f);
+				minY = static_cast<int>(std::min(mesh.vertices_out[mesh.indices[i * 3]].position.y, std::min(mesh.vertices_out[mesh.indices[i * 3 + 1]].position.y, mesh.vertices_out[mesh.indices[i * 3 + 2]].position.y)) - 0.5f);
+				maxY = static_cast<int>(std::max(mesh.vertices_out[mesh.indices[i * 3]].position.y, std::max(mesh.vertices_out[mesh.indices[i * 3 + 1]].position.y, mesh.vertices_out[mesh.indices[i * 3 + 2]].position.y)) + 0.5f);
 			}
 			else
 			{
-				minX = static_cast<int>(std::min(mesh.transformed_vertices[mesh.indices[i]].position.x, std::min(mesh.transformed_vertices[mesh.indices[i + 1]].position.x, mesh.transformed_vertices[mesh.indices[i + 2]].position.x)) - 0.5f);
-				maxX = static_cast<int>(std::max(mesh.transformed_vertices[mesh.indices[i]].position.x, std::max(mesh.transformed_vertices[mesh.indices[i + 1]].position.x, mesh.transformed_vertices[mesh.indices[i + 2]].position.x)) + 0.5f);
-				minY = static_cast<int>(std::min(mesh.transformed_vertices[mesh.indices[i]].position.y, std::min(mesh.transformed_vertices[mesh.indices[i + 1]].position.y, mesh.transformed_vertices[mesh.indices[i + 2]].position.y)) - 0.5f);
-				maxY = static_cast<int>(std::max(mesh.transformed_vertices[mesh.indices[i]].position.y, std::max(mesh.transformed_vertices[mesh.indices[i + 1]].position.y, mesh.transformed_vertices[mesh.indices[i + 2]].position.y)) + 0.5f);
+				minX = static_cast<int>(std::min(mesh.vertices_out[mesh.indices[i]].position.x, std::min(mesh.vertices_out[mesh.indices[i + 1]].position.x, mesh.vertices_out[mesh.indices[i + 2]].position.x)) - 0.5f);
+				maxX = static_cast<int>(std::max(mesh.vertices_out[mesh.indices[i]].position.x, std::max(mesh.vertices_out[mesh.indices[i + 1]].position.x, mesh.vertices_out[mesh.indices[i + 2]].position.x)) + 0.5f);
+				minY = static_cast<int>(std::min(mesh.vertices_out[mesh.indices[i]].position.y, std::min(mesh.vertices_out[mesh.indices[i + 1]].position.y, mesh.vertices_out[mesh.indices[i + 2]].position.y)) - 0.5f);
+				maxY = static_cast<int>(std::max(mesh.vertices_out[mesh.indices[i]].position.y, std::max(mesh.vertices_out[mesh.indices[i + 1]].position.y, mesh.vertices_out[mesh.indices[i + 2]].position.y)) + 0.5f);
 			}
 
 			// if statement of std::clamp from C++ 20
