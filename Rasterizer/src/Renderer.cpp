@@ -103,8 +103,7 @@ Renderer::~Renderer()
 void Renderer::Update(Timer* pTimer)
 {
 	m_Camera.Update(pTimer);
-	//VertexTransformationFunction(meshes_world);
-	VertexMatrixTransform(meshes_world);
+	VertexTransformationFunction(meshes_world);
 	TrianglesBoundingBox(meshes_world);
 }
 
@@ -161,50 +160,50 @@ void Renderer::Render()
 				});
 		});
 #else
-	for (Mesh& mesh : meshes_world)
-	{
-		//const size_t numTriangles = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? mesh.indices.size() / 3 : mesh.indices.size() - 2;
+for (Mesh& mesh : meshes_world)
+{
+    const size_t numTriangles = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? mesh.indices.size() / 3 : mesh.indices.size() - 2;
 
-		//for (size_t i = 0; i < numTriangles; ++i)
-		//{
-		//	const size_t baseIndex = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? i * 3 : i;
-		//	const size_t index0 = mesh.indices[baseIndex];
-		//	const size_t index1 = mesh.indices[baseIndex + 1];
-		//	const size_t index2 = mesh.indices[baseIndex + 2];
+    for (size_t i = 0; i < numTriangles; ++i)
+    {
+        const size_t baseIndex = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? i * 3 : i;
+        const size_t index0 = mesh.indices[baseIndex];
+        const size_t index1 = mesh.indices[baseIndex + 1];
+        const size_t index2 = mesh.indices[baseIndex + 2];
 
-		//	const BoundingBox& boundingBox = mesh.bounding_boxes[i];
+        const BoundingBox& boundingBox = mesh.bounding_boxes[i];
 
-		//	for (int px = boundingBox.xMin; px < boundingBox.xMax; ++px)
-		//	{
-		//		for (int py = boundingBox.yMin; py < boundingBox.yMax; ++py)
-		//		{
-		//			const Vector2 P(px + 0.5f, py + 0.5f);
+        for (int px = boundingBox.xMin; px < boundingBox.xMax; ++px)
+        {
+            for (int py = boundingBox.yMin; py < boundingBox.yMax; ++py)
+            {
+                const Vector2 P(px + 0.5f, py + 0.5f);
 
-		//			ColorRGB finalColor;
-		//			float pixelDepth;
-		//			Vector2 interpolatedUV{};
+                ColorRGB finalColor;
+                float pixelDepth;
+                Vector2 interpolatedUV{};
 
-		//			const bool doesTriangleHit = (i % 2 == 0 || mesh.primitiveTopology == PrimitiveTopology::TriangleList) ?
-		//				Utils::TriangleHitTest(mesh.vertices_out[index0], mesh.vertices_out[index1], mesh.vertices_out[index2], P, interpolatedUV, pixelDepth) :
-		//				Utils::TriangleHitTest(mesh.vertices_out[index0], mesh.vertices_out[index2], mesh.vertices_out[index1], P, interpolatedUV, pixelDepth);
+                const bool doesTriangleHit = (i % 2 == 0 || mesh.primitiveTopology == PrimitiveTopology::TriangleList) ?
+                    Utils::TriangleHitTest(mesh.transformed_vertices[index0], mesh.transformed_vertices[index1], mesh.transformed_vertices[index2], P, interpolatedUV, pixelDepth) :
+                    Utils::TriangleHitTest(mesh.transformed_vertices[index0], mesh.transformed_vertices[index2], mesh.transformed_vertices[index1], P, interpolatedUV, pixelDepth);
 
-		//			const int bufferIndex = px + (py * m_Width);
-		//			if (doesTriangleHit && m_pDepthBufferPixels[bufferIndex] > pixelDepth)
-		//			{
-		//				m_pDepthBufferPixels[bufferIndex] = pixelDepth;
-		//				finalColor = m_pTexture->Sample(interpolatedUV);
+                const int bufferIndex = px + (py * m_Width);
+                if (doesTriangleHit && m_pDepthBufferPixels[bufferIndex] > pixelDepth)
+                {
+                    m_pDepthBufferPixels[bufferIndex] = pixelDepth;
+                    finalColor = m_pTexture->Sample(interpolatedUV);
 
-		//				// Update Color in Buffer
-		//				finalColor.MaxToOne();
-		//				m_pBackBufferPixels[bufferIndex] = SDL_MapRGB(m_pBackBuffer->format,
-		//					static_cast<uint8_t>(finalColor.r * 255),
-		//					static_cast<uint8_t>(finalColor.g * 255),
-		//					static_cast<uint8_t>(finalColor.b * 255));
-		//			}
-		//		}
-		//	}
-		//}
-	}
+                    // Update Color in Buffer
+                    finalColor.MaxToOne();
+                    m_pBackBufferPixels[bufferIndex] = SDL_MapRGB(m_pBackBuffer->format,
+                        static_cast<uint8_t>(finalColor.r * 255),
+                        static_cast<uint8_t>(finalColor.g * 255),
+                        static_cast<uint8_t>(finalColor.b * 255));
+                }
+            }
+        }
+    }
+}
 
 
 #endif
@@ -213,7 +212,7 @@ void Renderer::Render()
 	SDL_UnlockSurface(m_pBackBuffer);
 	SDL_BlitSurface(m_pBackBuffer, 0, m_pFrontBuffer, 0);
 	SDL_UpdateWindowSurface(m_pWindow);
-
+	
 }
 
 void Renderer::NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
@@ -256,45 +255,6 @@ void Renderer::VertexTransformationFunction(std::vector<Mesh>& meshes) const
 			const float vertY{ (1 - mesh.transformed_vertices[i].position.y) / 2.f * m_Height };
 			mesh.transformed_vertices[i].position.x = vertX;
 			mesh.transformed_vertices[i].position.y = vertY;
-		}
-	}
-}
-
-void Renderer::VertexMatrixTransform(std::vector<Mesh>& meshes) const
-{
-	//Projection Stage
-	for (Mesh& mesh : meshes)
-	{
-		mesh.vertices_out.clear();
-		mesh.vertices_out.reserve(mesh.vertices.size());
-		Matrix worldMatrix{};
-		//viewMatrix{};
-		//Calculating the projection matrix
-		const float x{ 1.f / (m_AspectRatio * m_Camera.fov) };
-		const float y{ 1.f / m_Camera.fov };
-		const float renderDist{ m_Camera.far - m_Camera.near };
-		const float z1{ m_Camera.far / renderDist };
-		const float z2{ -(m_Camera.far * m_Camera.near) / renderDist };
-		const Matrix projectionMatrix{
-			Vector4{x,0,0,0},
-			Vector4{0,y,0,0},
-			Vector4{0,0,z1,1},
-			Vector4{0,0,z2,0}
-		};
-
-		//Getting the final transform matrix
-		const Matrix worldViewProjectionMatrix{ worldMatrix * m_Camera.invViewMatrix * projectionMatrix };
-
-		for (size_t i = 0; i < mesh.vertices.size(); i++)
-		{
-			mesh.vertices_out.push_back(Vertex_Out{ Vector4{mesh.vertices[i].position,0}, mesh.vertices[i].color,mesh.vertices[i].uv });
-			mesh.vertices_out[i].position =  worldViewProjectionMatrix.TransformPoint
-			(Vector4{ mesh.vertices[i].position,1 });
-
-			//NDC transformation
-			mesh.vertices_out[i].position.x /= mesh.vertices_out[i].position.w;
-			mesh.vertices_out[i].position.y /= mesh.vertices_out[i].position.w;
-			mesh.vertices_out[i].position.z /= mesh.vertices_out[i].position.w;
 		}
 	}
 }

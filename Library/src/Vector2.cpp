@@ -13,7 +13,7 @@ namespace dae {
 
 	Vector2::Vector2(float _x, float _y) : x(_x), y(_y) {}
 	Vector2::Vector2(const Vector3& vec) : x(vec.x), y(vec.y) {}
-	Vector2::Vector2(const Vector4& vec): x(vec.x), y (vec.y) {}
+
 	Vector2::Vector2(const Vector2& from, const Vector2& to) : x(to.x - from.x), y(to.y - from.y) {}
 
 	float Vector2::Magnitude() const

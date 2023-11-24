@@ -56,7 +56,6 @@ namespace dae
 		float m_AspectRatio{};
 
 		void VertexTransformationFunction( std::vector<Mesh>& meshes) const;
-		void VertexMatrixTransform(std::vector<Mesh>& meshes) const;
 		void TrianglesBoundingBox( std::vector<Mesh>& meshes) const;
 		void NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
 	};
