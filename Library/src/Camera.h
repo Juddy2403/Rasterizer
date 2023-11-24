@@ -32,6 +32,9 @@ namespace dae
 		Matrix invViewMatrix{};
 		Matrix viewMatrix{};
 
+		const float near{ 1 };
+		const float far{ 1000 };
+
 		void Initialize(float _fovAngle = 90.f, Vector3 _origin = {0.f,0.f,0.f})
 		{
 			fovAngle = _fovAngle;

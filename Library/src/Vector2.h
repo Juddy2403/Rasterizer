@@ -1,5 +1,6 @@
 #pragma once
 #include "Vector3.h"
+#include "Vector4.h"
 namespace dae
 {
 	struct Vector2
@@ -11,6 +12,7 @@ namespace dae
 		Vector2(float _x, float _y);
 		Vector2(const Vector2& from, const Vector2& to);
 		Vector2(const Vector3& vec);
+		Vector2(const Vector4& vec);
 
 		float Magnitude() const;
 		float SqrMagnitude() const;
