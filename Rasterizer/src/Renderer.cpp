@@ -155,56 +155,62 @@ void Renderer::Render()
 								}
 							}
 						}
-					}
+}
 
 
 				});
 		});
 #else
-for (Mesh& mesh : meshes_world)
-{
-    const size_t numTriangles = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? mesh.indices.size() / 3 : mesh.indices.size() - 2;
+	for (Mesh& mesh : meshes_world)
+	{
+		const size_t numTriangles = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? mesh.indices.size() / 3 : mesh.indices.size() - 2;
 
-    for (size_t i = 0; i < numTriangles; ++i)
-    {
-        const size_t baseIndex = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? i * 3 : i;
-        const size_t index0 = mesh.indices[baseIndex];
-        const size_t index1 = mesh.indices[baseIndex + 1];
-        const size_t index2 = mesh.indices[baseIndex + 2];
+		for (size_t i = 0; i < numTriangles; ++i)
+		{
+			const size_t baseIndex = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? i * 3 : i;
+			const size_t index0 = mesh.indices[baseIndex];
+			const size_t index1 = mesh.indices[baseIndex + 1];
+			const size_t index2 = mesh.indices[baseIndex + 2];
 
-        const BoundingBox& boundingBox = mesh.bounding_boxes[i];
+			const BoundingBox& boundingBox = mesh.bounding_boxes[i];
 
-        for (int px = boundingBox.xMin; px < boundingBox.xMax; ++px)
-        {
-            for (int py = boundingBox.yMin; py < boundingBox.yMax; ++py)
-            {
-                const Vector2 P(px + 0.5f, py + 0.5f);
+			for (int px = boundingBox.xMin; px < boundingBox.xMax; ++px)
+			{
+				for (int py = boundingBox.yMin; py < boundingBox.yMax; ++py)
+				{
+					const Vector2 P(px + 0.5f, py + 0.5f);
 
-                ColorRGB finalColor;
-                float pixelDepth;
-                Vector2 interpolatedUV{};
+					ColorRGB finalColor;
+					float pixelDepth;
+					Vector2 interpolatedUV{};
 
-                const bool doesTriangleHit = (i % 2 == 0 || mesh.primitiveTopology == PrimitiveTopology::TriangleList) ?
-                    Utils::TriangleHitTest(mesh.vertices_out[index0], mesh.vertices_out[index1], mesh.vertices_out[index2], P, interpolatedUV, pixelDepth) :
-                    Utils::TriangleHitTest(mesh.vertices_out[index0], mesh.vertices_out[index2], mesh.vertices_out[index1], P, interpolatedUV, pixelDepth);
+					const bool doesTriangleHit = (i % 2 == 0 || mesh.primitiveTopology == PrimitiveTopology::TriangleList) ?
+						Utils::TriangleHitTest(mesh.vertices_out[index0], mesh.vertices_out[index1], mesh.vertices_out[index2], P, interpolatedUV, pixelDepth) :
+						Utils::TriangleHitTest(mesh.vertices_out[index0], mesh.vertices_out[index2], mesh.vertices_out[index1], P, interpolatedUV, pixelDepth);
 
-                const int bufferIndex = px + (py * m_Width);
-                if (doesTriangleHit && m_pDepthBufferPixels[bufferIndex] > pixelDepth)
-                {
-                    m_pDepthBufferPixels[bufferIndex] = pixelDepth;
-                    finalColor = m_pTexture->Sample(interpolatedUV);
+					const int bufferIndex = px + (py * m_Width);
+					if (doesTriangleHit && m_pDepthBufferPixels[bufferIndex] > pixelDepth)
+					{
+						m_pDepthBufferPixels[bufferIndex] = pixelDepth;
 
-                    // Update Color in Buffer
-                    finalColor.MaxToOne();
-                    m_pBackBufferPixels[bufferIndex] = SDL_MapRGB(m_pBackBuffer->format,
-                        static_cast<uint8_t>(finalColor.r * 255),
-                        static_cast<uint8_t>(finalColor.g * 255),
-                        static_cast<uint8_t>(finalColor.b * 255));
-                }
-            }
-        }
-    }
-}
+						if (m_VisualMode == VisualMode::finalColor)  finalColor = m_pTexture->Sample(interpolatedUV);
+						else
+						{
+							Remap(pixelDepth, 0.985f, 1.f, 0.2f, 1.f);
+							finalColor = ColorRGB{ pixelDepth,pixelDepth,pixelDepth };
+						}
+
+						// Update Color in Buffer
+						finalColor.MaxToOne();
+						m_pBackBufferPixels[bufferIndex] = SDL_MapRGB(m_pBackBuffer->format,
+							static_cast<uint8_t>(finalColor.r * 255),
+							static_cast<uint8_t>(finalColor.g * 255),
+							static_cast<uint8_t>(finalColor.b * 255));
+					}
+				}
+			}
+		}
+	}
 
 
 #endif
@@ -213,7 +219,12 @@ for (Mesh& mesh : meshes_world)
 	SDL_UnlockSurface(m_pBackBuffer);
 	SDL_BlitSurface(m_pBackBuffer, 0, m_pFrontBuffer, 0);
 	SDL_UpdateWindowSurface(m_pWindow);
-	
+
+}
+
+void Renderer::ToggleVisualMode()
+{
+	m_VisualMode = VisualMode(!bool(m_VisualMode));
 }
 
 void Renderer::NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
@@ -330,10 +341,10 @@ void Renderer::TrianglesBoundingBox(std::vector<Mesh>& meshes) const
 			}
 
 			// if statement of std::clamp from C++ 20
-			minX = std::ranges::clamp(minX, 0, m_Width);
-			maxX = std::ranges::clamp(maxX, 0, m_Width);
-			minY = std::ranges::clamp(minY, 0, m_Height);
-			maxY = std::ranges::clamp(maxY, 0, m_Height);
+			Remap(minX, 0, m_Width);
+			Remap(maxX, 0, m_Width);
+			Remap(minY, 0, m_Height);
+			Remap(maxY, 0, m_Height);
 			mesh.bounding_boxes.push_back(BoundingBox{ minX,maxX,minY,maxY });
 		}
 

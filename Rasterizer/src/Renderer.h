@@ -32,7 +32,7 @@ namespace dae
 
 		void Update(Timer* pTimer);
 		void Render();
-
+		void ToggleVisualMode();
 		bool SaveBufferToImage() const;
 
 	private:
@@ -45,6 +45,12 @@ namespace dae
 		float* m_pDepthBufferPixels{};
 		const Texture* m_pTexture;
 
+		enum class VisualMode {
+			finalColor,
+			depthBuffer
+		};
+		VisualMode m_VisualMode{ VisualMode::finalColor };
+		
 		std::vector<Mesh> meshes_world;
 #if defined(MULTI_THREADING)
 		std::vector<uint32_t> m_ImageHorizontalIterator, m_ImageVerticalIterator;

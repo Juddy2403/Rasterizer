@@ -1,6 +1,7 @@
 #pragma once
 #include <cfloat>
 #include <cmath>
+#include <algorithm>
 
 namespace dae
 {
@@ -25,6 +26,18 @@ namespace dae
 	inline float Square(float a)
 	{
 		return a * a;
+	}
+
+	template<typename T>
+	inline void Remap(T& value, const T& min, const T& max)
+	{
+		value = std::ranges::clamp(value, min, max);
+	}
+
+	template<typename T>
+	inline void Remap(T& value, const T& inputMin, const T& inputMax, const T& outputMin, const T& outputMax)
+	{
+		value = outputMin + (value - inputMin) * (outputMax - outputMin) / (inputMax - inputMin);
 	}
 
 	inline float Lerpf(float a, float b, float factor)

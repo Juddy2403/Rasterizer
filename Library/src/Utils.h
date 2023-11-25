@@ -234,7 +234,7 @@ namespace dae
 			if (cross0 * cross2 < 0) return false;
 
 			// Calculate barycentric coordinates
-			const float doubleArea = cross0 + cross1 + cross2;
+			const float doubleArea = Vector2::Cross(edge0, edge1);
 			const float W2 = cross0 / doubleArea;
 			const float W0 = cross1 / doubleArea;
 			const float W1 = cross2 / doubleArea;
@@ -246,6 +246,8 @@ namespace dae
 
 			pixelDepth = 1.0f / (W0 * recipZ0 + W1 * recipZ1 + W2 * recipZ2);
 			//pixelDepth =  (W0 * v0.position.z + W1 * v1.position.z + W2 * v2.position.z);
+			
+			// Frustum culling
 			if (pixelDepth < 0 || pixelDepth > 1) return false; //hopefully this right
 
 			// Calculate interpolated values for UV
