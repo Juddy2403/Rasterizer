@@ -104,11 +104,8 @@ void Renderer::Update(Timer* pTimer)
 {
 	m_Camera.Update(pTimer);
 	//VertexTransformationFunction(meshes_world);
-	if(meshes_world[0].vertices_out.size() == 0)
-	{
-		VertexMatrixTransform(meshes_world);
-		TrianglesBoundingBox(meshes_world);
-	}
+	VertexMatrixTransform(meshes_world);
+	TrianglesBoundingBox(meshes_world);
 }
 
 void Renderer::Render()

@@ -234,20 +234,29 @@ namespace dae
 			if (cross0 * cross2 < 0) return false;
 
 			// Calculate barycentric coordinates
-			const float doubleArea = Vector2::Cross(edge0, edge1);
+			const float doubleArea = cross0 + cross1 + cross2;
 			const float W2 = cross0 / doubleArea;
 			const float W0 = cross1 / doubleArea;
 			const float W1 = cross2 / doubleArea;
 
-			// Calculate interpolated values
-			const float recipZ0 = 1.0f / v0.position.w;
-			const float recipZ1 = 1.0f / v1.position.w;
-			const float recipZ2 = 1.0f / v2.position.w;
+			// Calculating pixel depth
+			const float recipZ0 = 1.0f / v0.position.z;
+			const float recipZ1 = 1.0f / v1.position.z;
+			const float recipZ2 = 1.0f / v2.position.z;
 
-			const float recipSumZ = 1.0f / (W0 * recipZ0 + W1 * recipZ1 + W2 * recipZ2);
+			pixelDepth = 1.0f / (W0 * recipZ0 + W1 * recipZ1 + W2 * recipZ2);
+			//pixelDepth =  (W0 * v0.position.z + W1 * v1.position.z + W2 * v2.position.z);
+			if (pixelDepth < 0 || pixelDepth > 1) return false; //hopefully this right
 
-			uv = (v0.uv * W0 * recipZ0 + v1.uv * W1 * recipZ1 + v2.uv * W2 * recipZ2) * recipSumZ;
-			pixelDepth = recipSumZ;
+			// Calculate interpolated values for UV
+			const float recipW0 = 1.0f / v0.position.w;
+			const float recipW1 = 1.0f / v1.position.w;
+			const float recipW2 = 1.0f / v2.position.w;
+
+			const float recipSumW = 1.0f / (W0 * recipW0 + W1 * recipW1 + W2 * recipW2);
+
+			uv = (v0.uv * W0 * recipW0 + v1.uv * W1 * recipW1 + v2.uv * W2 * recipW2) * recipSumW;
+
 
 			return true;
 		}
