@@ -4,7 +4,7 @@
 #include "Maths.h"
 #include "DataTypes.h"
 
-#define DISABLE_OBJ
+//#define DISABLE_OBJ
 
 namespace dae
 {
@@ -255,10 +255,9 @@ namespace dae
 			const float recipW1 = 1.0f / v1.position.w;
 			const float recipW2 = 1.0f / v2.position.w;
 
-			const float recipSumW = 1.0f / (W0 * recipW0 + W1 * recipW1 + W2 * recipW2);
+			const float wInterpolated = 1.0f / (W0 * recipW0 + W1 * recipW1 + W2 * recipW2);
 
-			uv = (v0.uv * W0 * recipW0 + v1.uv * W1 * recipW1 + v2.uv * W2 * recipW2) * recipSumW;
-
+			uv = (v0.uv * W0 * recipW0 + v1.uv * W1 * recipW1 + v2.uv * W2 * recipW2) * wInterpolated;
 
 			return true;
 		}

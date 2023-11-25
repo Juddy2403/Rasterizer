@@ -20,7 +20,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	{
 		Mesh{
 				{
-				Vertex{ Vector3{-3,3,-2}, Vector2{0,0}},
+				/*Vertex{ Vector3{-3,3,-2}, Vector2{0,0}},
 				Vertex{ Vector3{0,3,-2}, Vector2{0.5f,0}},
 				Vertex{ Vector3{3,3,-2}, Vector2{1,0}},
 				Vertex{ Vector3{-3,0,-2}, Vector2{0,0.5f}},
@@ -28,17 +28,18 @@ Renderer::Renderer(SDL_Window* pWindow) :
 				Vertex{ Vector3{3,0,-2}, Vector2{1,0.5f}},
 				Vertex{ Vector3{-3,-3,-2}, Vector2{0,1}},
 				Vertex{ Vector3{0,-3,-2}, Vector2{0.5f,1}},
-				Vertex{ Vector3{3,-3,-2}, Vector2{1,1}},
+				Vertex{ Vector3{3,-3,-2}, Vector2{1,1}},*/
 				},
 				{
 					/*3,0,1,  1,4,3,  4,1,2,
 					2,5,4,  6,3,4,  4,7,6,
 					7,4,5,  5,8,7*/
-					3,0,4,1,5,2,
+
+					/*3,0,4,1,5,2,
 					2,6,
-					6,3,7,4,8,5
+					6,3,7,4,8,5*/
 				},
-			PrimitiveTopology::TriangleStrip
+			//PrimitiveTopology::TriangleStrip
 			}
 	//Mesh{
 	//		{
@@ -64,11 +65,14 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	try
 	{
 		//loading texture
-		m_pTexture = Texture::LoadFromFile("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/uv_grid_2.png");
+		m_pTexture = Texture::LoadFromFile("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/tuktuk.png");
 	}
 	catch (const FileNotFound& ex) {
 		std::cout << "File not found \n";
 	}
+
+	Utils::ParseOBJ("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/tuktuk.obj",
+		meshes_world[0].vertices, meshes_world[0].indices);
 
 	//Create Buffers
 	m_pFrontBuffer = SDL_GetWindowSurface(pWindow);
@@ -79,9 +83,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	m_pDepthBufferPixels = new float[m_Width * m_Height];
 
 	//Initialize Camera
-	m_Camera.Initialize(60.f, { .0f,.0f,-10.f });
-
-
+	m_Camera.Initialize(60.f, { .0f,5.0f,-30.f });
 
 #if defined(MULTI_THREADING)
 	//Multi-threading 
@@ -196,7 +198,7 @@ void Renderer::Render()
 						if (m_VisualMode == VisualMode::finalColor)  finalColor = m_pTexture->Sample(interpolatedUV);
 						else
 						{
-							Remap(pixelDepth, 0.985f, 1.f, 0.2f, 1.f);
+							Remap(pixelDepth, 0.995f, 1.f, 0.2f, 1.f);
 							finalColor = ColorRGB{ pixelDepth,pixelDepth,pixelDepth };
 						}
 
@@ -296,7 +298,8 @@ void Renderer::VertexMatrixTransform(std::vector<Mesh>& meshes) const
 
 		for (size_t i = 0; i < mesh.vertices.size(); i++)
 		{
-			mesh.vertices_out.push_back(Vertex_Out{ Vector4{mesh.vertices[i].position,0}, mesh.vertices[i].color,mesh.vertices[i].uv });
+			mesh.vertices_out.push_back(Vertex_Out{ Vector4{mesh.vertices[i].position,0}, mesh.vertices[i].color,mesh.vertices[i].uv 
+				,mesh.vertices[i].normal,mesh.vertices[i].tangent});
 			mesh.vertices_out[i].position = worldViewProjectionMatrix.TransformPoint
 			(Vector4{ mesh.vertices[i].position,1 });
 
