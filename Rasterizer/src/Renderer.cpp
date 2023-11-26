@@ -39,7 +39,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 					2,6,
 					6,3,7,4,8,5*/
 				},
-			//PrimitiveTopology::TriangleStrip
+			PrimitiveTopology::TriangleList
 			}
 	//Mesh{
 	//		{
@@ -108,6 +108,9 @@ void Renderer::Update(Timer* pTimer)
 	//VertexTransformationFunction(meshes_world);
 	VertexMatrixTransform(meshes_world);
 	TrianglesBoundingBox(meshes_world);
+	//Rotate Yaw
+	meshes_world[0].worldMatrix = Matrix::CreateRotationY(PI_DIV_2 * pTimer->GetTotal());
+
 }
 
 void Renderer::Render()
@@ -175,15 +178,15 @@ void Renderer::Render()
 			const size_t index2 = mesh.indices[baseIndex + 2];
 
 			const BoundingBox& boundingBox = mesh.bounding_boxes[i];
-
+			if(!mesh.bounding_boxes[i].isOutOfScreen)
 			for (int px = boundingBox.xMin; px < boundingBox.xMax; ++px)
 			{
 				for (int py = boundingBox.yMin; py < boundingBox.yMax; ++py)
 				{
 					const Vector2 P(px + 0.5f, py + 0.5f);
 
-					ColorRGB finalColor;
-					float pixelDepth;
+					ColorRGB finalColor{};
+					float pixelDepth{};
 					Vector2 interpolatedUV{};
 
 					const bool doesTriangleHit = (i % 2 == 0 || mesh.primitiveTopology == PrimitiveTopology::TriangleList) ?
@@ -198,10 +201,11 @@ void Renderer::Render()
 						if (m_VisualMode == VisualMode::finalColor)  finalColor = m_pTexture->Sample(interpolatedUV);
 						else
 						{
-							Remap(pixelDepth, 0.995f, 1.f, 0.2f, 1.f);
+							const float minInterpolation{ 0.975f }, maxInterpolation{ 1.f };
+							Remap(pixelDepth, minInterpolation, maxInterpolation, 0.1f, 1.f);
 							finalColor = ColorRGB{ pixelDepth,pixelDepth,pixelDepth };
 						}
-
+	
 						// Update Color in Buffer
 						finalColor.MaxToOne();
 						m_pBackBufferPixels[bufferIndex] = SDL_MapRGB(m_pBackBuffer->format,
@@ -280,12 +284,15 @@ void Renderer::VertexMatrixTransform(std::vector<Mesh>& meshes) const
 	{
 		mesh.vertices_out.clear();
 		mesh.vertices_out.reserve(mesh.vertices.size());
+		mesh.vertices_out.reserve(mesh.vertices.size());
+
 		//Calculating the projection matrix
 		const float x{ 1.f / (m_AspectRatio * m_Camera.fov) };
 		const float y{ 1.f / m_Camera.fov };
 		const float renderDist{ m_Camera.far - m_Camera.near };
 		const float z1{ m_Camera.far / renderDist };
 		const float z2{ -(m_Camera.far * m_Camera.near) / renderDist };
+
 		const Matrix projectionMatrix{
 			Vector4{x,0,0,0},
 			Vector4{0,y,0,0},
@@ -294,20 +301,17 @@ void Renderer::VertexMatrixTransform(std::vector<Mesh>& meshes) const
 		};
 
 		//Getting the final transform matrix
-		const Matrix worldViewProjectionMatrix{ m_Camera.invViewMatrix * projectionMatrix };
+		const Matrix worldViewProjectionMatrix{ mesh.worldMatrix * m_Camera.invViewMatrix * projectionMatrix };
 
 		for (size_t i = 0; i < mesh.vertices.size(); i++)
 		{
-			mesh.vertices_out.push_back(Vertex_Out{ Vector4{mesh.vertices[i].position,0}, mesh.vertices[i].color,mesh.vertices[i].uv 
+			mesh.vertices_out.push_back(Vertex_Out{ Vector4{mesh.vertices[i].position,1}, mesh.vertices[i].color,mesh.vertices[i].uv 
 				,mesh.vertices[i].normal,mesh.vertices[i].tangent});
-			mesh.vertices_out[i].position = worldViewProjectionMatrix.TransformPoint
-			(Vector4{ mesh.vertices[i].position,1 });
-
+			mesh.vertices_out[i].position = worldViewProjectionMatrix.TransformPoint(mesh.vertices_out[i].position);
 			//NDC transformation
 			mesh.vertices_out[i].position.x /= mesh.vertices_out[i].position.w;
 			mesh.vertices_out[i].position.y /= mesh.vertices_out[i].position.w;
 			mesh.vertices_out[i].position.z /= mesh.vertices_out[i].position.w;
-
 			const float vertX{ (mesh.vertices_out[i].position.x + 1) / 2.f * m_Width };
 			const float vertY{ (1 - mesh.vertices_out[i].position.y) / 2.f * m_Height };
 			mesh.vertices_out[i].position.x = vertX;
@@ -342,13 +346,16 @@ void Renderer::TrianglesBoundingBox(std::vector<Mesh>& meshes) const
 				minY = static_cast<int>(std::min(mesh.vertices_out[mesh.indices[i]].position.y, std::min(mesh.vertices_out[mesh.indices[i + 1]].position.y, mesh.vertices_out[mesh.indices[i + 2]].position.y)) - 0.5f);
 				maxY = static_cast<int>(std::max(mesh.vertices_out[mesh.indices[i]].position.y, std::max(mesh.vertices_out[mesh.indices[i + 1]].position.y, mesh.vertices_out[mesh.indices[i + 2]].position.y)) + 0.5f);
 			}
-
+			bool isOutOfScreen{ false };
+			if (minX < 0 || minY < 0 || maxX > m_Width || maxY > m_Height)
+				isOutOfScreen = true;
 			// if statement of std::clamp from C++ 20
 			Remap(minX, 0, m_Width);
 			Remap(maxX, 0, m_Width);
 			Remap(minY, 0, m_Height);
 			Remap(maxY, 0, m_Height);
 			mesh.bounding_boxes.push_back(BoundingBox{ minX,maxX,minY,maxY });
+			mesh.bounding_boxes[i].isOutOfScreen = isOutOfScreen;
 		}
 
 	}

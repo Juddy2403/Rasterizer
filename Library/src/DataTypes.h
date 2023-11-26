@@ -12,6 +12,8 @@ namespace dae
 		int xMax{};
 		int yMax{};
 
+		bool isOutOfScreen{};
+
 		BoundingBox(int _xMin, int _xMax, int _yMin, int _yMax) : xMin{ _xMin }, xMax{ _xMax }, yMin{ _yMin }, yMax{ _yMax } {}
 		//bool IsPointInBox(const Vector2& point)
 		//{
