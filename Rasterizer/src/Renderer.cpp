@@ -202,7 +202,7 @@ void Renderer::Render()
 						else
 						{
 							const float minInterpolation{ 0.975f }, maxInterpolation{ 1.f };
-							Remap(pixelDepth, minInterpolation, maxInterpolation, 0.1f, 1.f);
+							Remap(pixelDepth, minInterpolation, maxInterpolation, 0.f, .8f);
 							finalColor = ColorRGB{ pixelDepth,pixelDepth,pixelDepth };
 						}
 	

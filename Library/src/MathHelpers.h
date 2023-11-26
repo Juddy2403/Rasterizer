@@ -37,6 +37,7 @@ namespace dae
 	template<typename T>
 	inline void Remap(T& value, const T& inputMin, const T& inputMax, const T& outputMin, const T& outputMax)
 	{
+		Remap(value, inputMin, inputMax);
 		value = outputMin + (value - inputMin) * (outputMax - outputMin) / (inputMax - inputMin);
 	}
 
