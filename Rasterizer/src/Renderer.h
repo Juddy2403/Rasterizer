@@ -14,6 +14,7 @@ namespace dae
 {
 	class Texture;
 	struct Mesh;
+	struct Vertex_Out;
 	struct Vertex;
 	class Timer;
 	class Scene;
@@ -34,6 +35,8 @@ namespace dae
 		void Render();
 		void ToggleVisualMode();
 		bool SaveBufferToImage() const;
+
+		
 
 	private:
 		
@@ -59,12 +62,14 @@ namespace dae
 
 		int m_Width{};
 		int m_Height{};
-		float m_AspectRatio{};
+		float m_Cross0{}, m_Cross1{}, m_Cross2{};
 
 		//void VertexTransformationFunction( std::vector<Mesh>& meshes) const;
-		void VertexMatrixTransform(std::vector<Mesh>& meshes) const;
-		void TrianglesBoundingBox( std::vector<Mesh>& meshes) const;
+		void VertexMatrixTransform(Mesh& mesh) const;
+		void TrianglesBoundingBox(Mesh& mesh) const;
 		void NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
+		bool TriangleHitTest(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2, const Vector2& pixelVector);
+		Vertex_Out& InterpolatedVertex(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2, const Vector2& pixelVector);
 	};
 	
 
