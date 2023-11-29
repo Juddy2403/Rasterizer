@@ -65,13 +65,13 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	try
 	{
 		//loading texture
-		m_pTexture = Texture::LoadFromFile("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/tuktuk.png");
+		m_pTexture = Texture::LoadFromFile("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/vehicle_diffuse.png");
 	}
 	catch (const FileNotFound& ex) {
 		std::cout << "File not found \n";
 	}
 
-	Utils::ParseOBJ("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/tuktuk.obj",
+	Utils::ParseOBJ("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/vehicle.obj",
 		meshes_world[0].vertices, meshes_world[0].indices);
 
 	//Create Buffers
@@ -101,6 +101,7 @@ void Renderer::Update(Timer* pTimer)
 		TrianglesBoundingBox(mesh);
 	}
 	//Rotate Yaw
+	if(m_IsRotating)
 	meshes_world[0].worldMatrix = Matrix::CreateRotationY(PI_DIV_2 * pTimer->GetTotal());
 
 }
@@ -189,8 +190,6 @@ void Renderer::Render()
 					{
 						const Vector2 P(px + 0.5f, py + 0.5f);
 
-						ColorRGB finalColor{};
-
 						const bool doesTriangleHit = (i % 2 == 0 || mesh.primitiveTopology == PrimitiveTopology::TriangleList) ?
 							TriangleHitTest(mesh.vertices_out[index0], mesh.vertices_out[index1], mesh.vertices_out[index2], P) :
 							TriangleHitTest(mesh.vertices_out[index0], mesh.vertices_out[index2], mesh.vertices_out[index1], P);
@@ -207,22 +206,7 @@ void Renderer::Render()
 							if (m_pDepthBufferPixels[bufferIndex] > interpolatedVert.position.z && interpolatedVert.position.z > 0 && interpolatedVert.position.z < 1)
 							{
 								m_pDepthBufferPixels[bufferIndex] = interpolatedVert.position.z;
-								if (m_VisualMode == VisualMode::finalColor)  finalColor = m_pTexture->Sample(interpolatedVert.uv);
-								else
-								{
-									const float minInterpolation{ 0.985f }, maxInterpolation{ 1.f };
-									float remappedDepthValue{ m_pDepthBufferPixels[bufferIndex] };
-									Remap(remappedDepthValue, minInterpolation, maxInterpolation, 0.f, .9f);
-									finalColor = ColorRGB{ remappedDepthValue,remappedDepthValue,remappedDepthValue };
-								}
-
-
-								// Update Color in Buffer
-								finalColor.MaxToOne();
-								m_pBackBufferPixels[bufferIndex] = SDL_MapRGB(m_pBackBuffer->format,
-									static_cast<uint8_t>(finalColor.r * 255),
-									static_cast<uint8_t>(finalColor.g * 255),
-									static_cast<uint8_t>(finalColor.b * 255));
+								PixelShading(interpolatedVert, bufferIndex);
 							}
 						}
 					}
@@ -243,21 +227,61 @@ void Renderer::Render()
 
 void Renderer::ToggleVisualMode()
 {
-	m_VisualMode = VisualMode(!bool(m_VisualMode));
+	m_VisualMode = VisualMode((int(m_VisualMode) + 1) % 3);
 }
 
-void Renderer::NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
+inline void Renderer::PixelShading(const Vertex_Out& v, const int bufferIdx)
 {
-	vertices_out.reserve(vertices_in.size());
-	for (size_t i = 0; i < vertices_in.size(); i++)
+	ColorRGB finalColor{};
+	Vector3 lightDirection = { -.577f, .577f, -.577f };
+	const float lightIntensity{ 7.f };
+	const float lightDirCos{ Vector3::Dot(v.normal,lightDirection) };
+	switch (m_VisualMode)
 	{
-		vertices_out.push_back(vertices_in[i]);
-		const float vertX{ (vertices_in[i].position.x + 1) / 2.f * m_Width };
-		const float vertY{ (1 - vertices_in[i].position.y) / 2.f * m_Height };
-		vertices_out[i].position.x = vertX;
-		vertices_out[i].position.y = vertY;
+	case VisualMode::finalColor:
+	{
+		finalColor = m_pTexture->Sample(v.uv);
 	}
+	break;
+	case VisualMode::depthBuffer:
+	{
+		const float minInterpolation{ 0.985f }, maxInterpolation{ 1.f };
+		float remappedDepthValue{ m_pDepthBufferPixels[bufferIdx] };
+		Remap(remappedDepthValue, minInterpolation, maxInterpolation, 0.f, .9f);
+		finalColor = ColorRGB{ remappedDepthValue,remappedDepthValue,remappedDepthValue };
+	}
+	break;
+	case VisualMode::BRDF:
+		if (lightDirCos >= 0)
+		{
+			const float kd{ 1 };
+			const ColorRGB cd{ m_pTexture->Sample(v.uv) };
+			const ColorRGB BRDF{ cd * kd / float(M_PI) };
+			finalColor = lightIntensity * BRDF * ColorRGB{ lightDirCos,lightDirCos,lightDirCos };
+		}
+		break;
+	}
+
+	// Update Color in Buffer
+	finalColor.MaxToOne();
+	m_pBackBufferPixels[bufferIdx] = SDL_MapRGB(m_pBackBuffer->format,
+		static_cast<uint8_t>(finalColor.r * 255),
+		static_cast<uint8_t>(finalColor.g * 255),
+		static_cast<uint8_t>(finalColor.b * 255));
 }
+
+//void Renderer::NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
+//{
+//	vertices_out.reserve(vertices_in.size());
+//	for (size_t i = 0; i < vertices_in.size(); i++)
+//	{
+//		vertices_out.push_back(vertices_in[i]);
+//		const float vertX{ (vertices_in[i].position.x + 1) / 2.f * m_Width };
+//		const float vertY{ (1 - vertices_in[i].position.y) / 2.f * m_Height };
+//		vertices_out[i].position.x = vertX;
+//		vertices_out[i].position.y = vertY;
+//	}
+//}
 
 //void Renderer::VertexTransformationFunction(std::vector<Mesh>& meshes) const
 //{
@@ -290,11 +314,10 @@ void Renderer::NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<V
 //	}
 //}
 
-void Renderer::VertexMatrixTransform(Mesh& mesh) const
+inline void Renderer::VertexMatrixTransform(Mesh& mesh) const noexcept
 {
 	//Projection Stage
 	mesh.vertices_out.clear();
-	mesh.vertices_out.reserve(mesh.vertices.size());
 	mesh.vertices_out.reserve(mesh.vertices.size());
 
 	//Getting the final transform matrix
@@ -305,10 +328,15 @@ void Renderer::VertexMatrixTransform(Mesh& mesh) const
 		mesh.vertices_out.push_back(Vertex_Out{ Vector4{mesh.vertices[i].position,1}, mesh.vertices[i].color,mesh.vertices[i].uv
 			,mesh.vertices[i].normal,mesh.vertices[i].tangent });
 		mesh.vertices_out[i].position = worldViewProjectionMatrix.TransformPoint(mesh.vertices_out[i].position);
-		//NDC transformation
+
+		//normals need to be multiplied with the world matrix only & no perspective divide for them
+		mesh.vertices_out[i].normal = mesh.worldMatrix.TransformPoint(mesh.vertices_out[i].normal);
+
+		//NDC transformation/ Perspective divide
 		mesh.vertices_out[i].position.x /= mesh.vertices_out[i].position.w;
 		mesh.vertices_out[i].position.y /= mesh.vertices_out[i].position.w;
 		mesh.vertices_out[i].position.z /= mesh.vertices_out[i].position.w;
+
 		const float vertX{ (mesh.vertices_out[i].position.x + 1) / 2.f * m_Width };
 		const float vertY{ (1 - mesh.vertices_out[i].position.y) / 2.f * m_Height };
 		mesh.vertices_out[i].position.x = vertX;
@@ -317,7 +345,7 @@ void Renderer::VertexMatrixTransform(Mesh& mesh) const
 	}
 }
 
-void Renderer::TrianglesBoundingBox(Mesh& mesh) const
+inline void Renderer::TrianglesBoundingBox(Mesh& mesh) const noexcept
 {//should be calculated inside the mesh struct instead
 	mesh.bounding_boxes.clear();
 	const size_t numTriangles = (mesh.primitiveTopology == PrimitiveTopology::TriangleList) ? mesh.indices.size() / 3 : mesh.indices.size() - 2;
@@ -359,7 +387,12 @@ bool Renderer::SaveBufferToImage() const
 	return SDL_SaveBMP(m_pBackBuffer, "Rasterizer_ColorBuffer.bmp");
 }
 
-bool Renderer::TriangleHitTest(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2, const Vector2& pixelVector)
+void dae::Renderer::ToggleRotation()
+{
+	m_IsRotating = !m_IsRotating;
+}
+
+inline bool Renderer::TriangleHitTest(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2, const Vector2& pixelVector) noexcept
 {
 	// Calculate vectors and cross products
 	const Vector2 edge0 = v1.position - v0.position;
@@ -381,7 +414,7 @@ bool Renderer::TriangleHitTest(const Vertex_Out& v0, const Vertex_Out& v1, const
 
 	return true;
 }
-Vertex_Out& Renderer::InterpolatedVertex(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2, const Vector2& pixelVector)
+inline Vertex_Out& Renderer::InterpolatedVertex(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2, const Vector2& pixelVector)
 {
 	Vertex_Out interpolatedVert{};
 	const Vector2 edge0 = v1.position - v0.position;
@@ -400,14 +433,25 @@ Vertex_Out& Renderer::InterpolatedVertex(const Vertex_Out& v0, const Vertex_Out&
 
 	interpolatedVert.position.z = 1.0f / (W0 * recipZ0 + W1 * recipZ1 + W2 * recipZ2);
 
-	// Calculate interpolated values for UV
+	// Calculate interpolated values 
 	const float recipW0 = 1.0f / v0.position.w;
 	const float recipW1 = 1.0f / v1.position.w;
 	const float recipW2 = 1.0f / v2.position.w;
 
 	interpolatedVert.position.w = 1.0f / (W0 * recipW0 + W1 * recipW1 + W2 * recipW2);
 
+	// Calculate interpolated texCoord
 	interpolatedVert.uv = (v0.uv * W0 * recipW0 + v1.uv * W1 * recipW1 + v2.uv * W2 * recipW2) * interpolatedVert.position.w;
+
+	// Calculate interpolated normal
+	interpolatedVert.normal = (v0.normal * W0 * recipW0 + v1.normal * W1 * recipW1 + v2.normal * W2 * recipW2) * interpolatedVert.position.w;
+	interpolatedVert.normal.Normalize();
+
+	// Calculate interpolated color
+	interpolatedVert.color = (v0.color * W0 * recipW0 + v1.color * W1 * recipW1 + v2.color * W2 * recipW2) * interpolatedVert.position.w;
+
+	// Calculate interpolated tangent
+	interpolatedVert.tangent = (v0.tangent * W0 * recipW0 + v1.tangent * W1 * recipW1 + v2.tangent * W2 * recipW2) * interpolatedVert.position.w;
 
 	return interpolatedVert;
 }
