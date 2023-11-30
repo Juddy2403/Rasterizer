@@ -37,6 +37,7 @@ namespace dae
 		bool SaveBufferToImage() const;
 		void ToggleRotation();
 		void ToggleNormals();
+		void ToggleDepthBuffer();
 		
 
 	private:
@@ -67,6 +68,7 @@ namespace dae
 		float m_Cross0{}, m_Cross1{}, m_Cross2{};
 		bool m_IsRotating{ true };
 		bool m_IsNormalMapToggled{ true };
+		bool m_IsDepthBufferToggled{ false };
 
 		//void VertexTransformationFunction( std::vector<Mesh>& meshes) const;
 		inline void VertexMatrixTransform(Mesh& mesh) const noexcept;

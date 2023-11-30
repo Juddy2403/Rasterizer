@@ -177,22 +177,11 @@ namespace dae
 
 		static ColorRGB Lambert(const ColorRGB& diffuseColor, float diffuseReflectance = 1)
 		{
-			//todo: W3
-			//assert(false && "Not Implemented Yet");
-			return { diffuseColor * diffuseReflectance / float(PI) };
-		}
-
-		static ColorRGB Lambert(const ColorRGB& diffuseColor, const ColorRGB& diffuseReflectance)
-		{
-			//todo: W3
-			//assert(false && "Not Implemented Yet");
 			return { diffuseColor * diffuseReflectance / float(PI) };
 		}
 
 		static ColorRGB Phong(float specularReflectance, float phongExp, const Vector3& lightDir, const Vector3& viewDir, const Vector3& normal)
 		{
-			//todo: W3
-			//assert(false && "Not Implemented Yet");
 			if (phongExp == 0) return specularReflectance * ColorRGB{ 1,1,1 };
 			const Vector3 reflect{ Vector3::Reflect(lightDir,normal) };
 			const float cos{ std::min(1.f, std::max(Vector3::Dot(reflect,viewDir),0.f)) };

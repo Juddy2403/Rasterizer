@@ -37,7 +37,7 @@ namespace dae
 		Matrix projectionMatrix{};
 
 		const float near{ .1f };
-		const float far{ 1000.f };
+		const float far{ 100.f };
 		float aspectRatio{};
 
 		void Initialize(float _fovAngle = 90.f, Vector3 _origin = {0.f,0.f,0.f}, float _aspectRatio = 1.f)
@@ -51,38 +51,19 @@ namespace dae
 
 		void CalculateViewMatrix()
 		{
-			//TODO W1
 			//ONB => invViewMatrix
 			//Inverse(ONB) => ViewMatrix
+			viewMatrix = Matrix::CreateLookAtLH(origin, forward);
 
-			right = Vector3::Cross(Vector3::UnitY, forward).Normalized();
-			up = Vector3::Cross(forward, right).Normalized();
-
-			viewMatrix = Matrix{
-				Vector4 {right, 0},
-				Vector4 {up, 0},
-				Vector4 {forward, 0},
-				Vector4 {origin, 1}
-			};
 			invViewMatrix = viewMatrix.Inverse();
-			//ViewMatrix => Matrix::CreateLookAtLH(...) [not implemented yet]
+
 			//DirectX Implementation => https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dxmatrixlookatlh
 		}
 
 		void CalculateProjectionMatrix()
 		{
-			const float x{ 1.f / (aspectRatio * fov) };
-			const float y{ 1.f / fov };
-			const float renderDist{ far - near };
-			const float z1{ far / renderDist };
-			const float z2{ -(far * near) / renderDist };
-			projectionMatrix = Matrix {
-				Vector4{x,0,0,0},
-				Vector4{0,y,0,0},
-				Vector4{0,0,z1,1},
-				Vector4{0,0,z2,0}
-			};
-			//ProjectionMatrix => Matrix::CreatePerspectiveFovLH(...) [not implemented yet]
+			
+			projectionMatrix = Matrix::CreatePerspectiveFovLH(fov, aspectRatio, near, far);
 			//DirectX Implementation => https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dxmatrixperspectivefovlh
 		}
 

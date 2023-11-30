@@ -17,45 +17,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	//Define triangle list mesh
 	meshes_world
 	{
-		Mesh{
-				{
-				/*Vertex{ Vector3{-3,3,-2}, Vector2{0,0}},
-				Vertex{ Vector3{0,3,-2}, Vector2{0.5f,0}},
-				Vertex{ Vector3{3,3,-2}, Vector2{1,0}},
-				Vertex{ Vector3{-3,0,-2}, Vector2{0,0.5f}},
-				Vertex{ Vector3{0,0,-2}, Vector2{0.5f,0.5f}},
-				Vertex{ Vector3{3,0,-2}, Vector2{1,0.5f}},
-				Vertex{ Vector3{-3,-3,-2}, Vector2{0,1}},
-				Vertex{ Vector3{0,-3,-2}, Vector2{0.5f,1}},
-				Vertex{ Vector3{3,-3,-2}, Vector2{1,1}},*/
-				},
-				{
-					/*3,0,1,  1,4,3,  4,1,2,
-					2,5,4,  6,3,4,  4,7,6,
-					7,4,5,  5,8,7*/
-
-					/*3,0,4,1,5,2,
-					2,6,
-					6,3,7,4,8,5*/
-				},
-			PrimitiveTopology::TriangleList
-			}
-	//Mesh{
-	//		{
-	//		//Triangle 1
-	//			Vertex{Vector3{0.f,2.f,0.f},ColorRGB{1,0,0}},
-	//			Vertex{Vector3{1.5f,-1.f,0.f },ColorRGB{1,0,0}},
-	//			Vertex{Vector3{-1.5f,-1.f,0.f },ColorRGB{1,0,0}},
-	//			//Triangle 2
-	//				Vertex{Vector3{0.f,4.f,2.f},ColorRGB{1,0,0}},
-	//				Vertex{Vector3{3.f,-2.f,2.f },ColorRGB{0,1,0}},
-	//				Vertex{Vector3{-3.f,-2.f,2.f },ColorRGB{0,0,1}}
-	//			},
-	//			{
-	//				0,1,2,  3,4,5
-	//			},
-	//		PrimitiveTopology::TriangleList
-	//		}
+		Mesh{{},{},PrimitiveTopology::TriangleList}
 	}
 {
 	//Initialize
@@ -83,10 +45,10 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	m_pDepthBufferPixels = new float[m_Width * m_Height];
 
 	//Initialize Camera
-	m_Camera.Initialize(45.f, { .0f,0.0f,0.f }, float(m_Width) / float(m_Height));
+	m_Camera.Initialize(45.f, { .0f,5.f,-64.f }, float(m_Width) / float(m_Height));
 
 	//Translate mesh
-	meshes_world[0].worldMatrix = meshes_world[0].translateMatrix = Matrix::CreateTranslation(0, 0, 50);
+	//meshes_world[0].worldMatrix = meshes_world[0].translateMatrix = Matrix::CreateTranslation(0, 0, 64);
 
 }
 
@@ -220,8 +182,17 @@ void Renderer::Render()
 							if (m_pDepthBufferPixels[bufferIndex] > interpolatedVert.position.z && interpolatedVert.position.z > 0 && interpolatedVert.position.z < 1)
 							{
 								m_pDepthBufferPixels[bufferIndex] = interpolatedVert.position.z;
-								ColorRGB finalColor = PixelShading(interpolatedVert);
 
+								ColorRGB finalColor{};
+								if(!m_IsDepthBufferToggled)	finalColor = PixelShading(interpolatedVert);
+								else
+								{
+									const float minInterpolation{ 0.995f }, maxInterpolation{ 1.f };
+									float remappedDepthValue{ m_pDepthBufferPixels[bufferIndex] };
+									Remap(remappedDepthValue, minInterpolation, maxInterpolation, 0.f, 1.f);
+									finalColor = ColorRGB{ remappedDepthValue,remappedDepthValue,remappedDepthValue };
+								}
+				
 								// Update Color in Buffer
 								finalColor.MaxToOne();
 								m_pBackBufferPixels[bufferIndex] = SDL_MapRGB(m_pBackBuffer->format,
@@ -272,7 +243,8 @@ ColorRGB Renderer::PixelShading(const Vertex_Out& v)
 {
 	Vector3 lightDirection = { .577f, -.577f, .577f };
 	const float lightIntensity{ 7.f };
-	const ColorRGB ambientOcclusion = { 0.025f, 0.025f,0.025f };
+	const ColorRGB ambientOcclusion = { 0.05f, 0.05f,0.05f };
+	const ColorRGB lightColor = { 1,1,1 };
 
 	Vector3 normal{ v.normal };
 
@@ -304,8 +276,8 @@ ColorRGB Renderer::PixelShading(const Vertex_Out& v)
 		case ShadingMode::diffuse:
 		{
 			const ColorRGB cd{ meshes_world[0].diffuseColor->Sample(v.uv) };
-			const ColorRGB BRDF{ Utils::Lambert( cd) };
-			return BRDF * lightDirCos * lightIntensity;
+			const ColorRGB diffuse{ Utils::Lambert(cd) };
+			return diffuse * lightDirCos * lightIntensity;
 			break;
 		}
 
@@ -317,7 +289,7 @@ ColorRGB Renderer::PixelShading(const Vertex_Out& v)
 			const float shininess{ 25.f };
 			// SpecularColor sampled from SpecularMap and PhongExponent from GlossinessMap
 			const ColorRGB specular{ Utils::Phong(specularMapSample, glossinesMapSample * shininess, lightDirection, -v.viewDirection, normal) };
-			return specular * lightDirCos;
+			return specular;
 			break;
 		}
 		case ShadingMode::combined:
@@ -329,18 +301,12 @@ ColorRGB Renderer::PixelShading(const Vertex_Out& v)
 			// SpecularColor sampled from SpecularMap and PhongExponent from GlossinessMap
 			const ColorRGB specular{ Utils::Phong(specularMapSample, glossinesMapSample * shininess, lightDirection, -v.viewDirection, normal) };
 			const ColorRGB cd{ meshes_world[0].diffuseColor->Sample(v.uv) };
-			const ColorRGB BRDF{ Utils::Lambert( cd) };
-			return ColorRGB{ lightDirCos  * (specular + BRDF * lightIntensity + ambientOcclusion) };
+			const ColorRGB diffuse{ Utils::Lambert( cd) };
+			//return ColorRGB{ lightDirCos  * (specular + diffuse * lightIntensity + ambientOcclusion) };
+			return ColorRGB{ lightColor * (lightDirCos * diffuse * lightIntensity + specular + ambientOcclusion) };
 			break;
 		}
-		//case ShadingMode::depthBuffer:
-		//{
-		//	const float minInterpolation{ 0.985f }, maxInterpolation{ 1.f };
-		//	float remappedDepthValue{ m_pDepthBufferPixels[bufferIdx] };
-		//	Remap(remappedDepthValue, minInterpolation, maxInterpolation, 0.f, .9f);
-		//	finalColor = ColorRGB{ remappedDepthValue,remappedDepthValue,remappedDepthValue };
-		//}
-		//break;
+	
 		}
 	return ColorRGB{};
 
@@ -432,6 +398,11 @@ void dae::Renderer::ToggleNormals()
 	m_IsNormalMapToggled = !m_IsNormalMapToggled;
 }
 
+void dae::Renderer::ToggleDepthBuffer()
+{
+	m_IsDepthBufferToggled = !m_IsDepthBufferToggled;
+}
+
 inline bool Renderer::TriangleHitTest(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2, const Vector2& pixelVector) noexcept
 {
 	// Calculate vectors and cross products
@@ -496,6 +467,7 @@ inline Vertex_Out& Renderer::InterpolatedVertex(const Vertex_Out& v0, const Vert
 
 	// Calculate interpolated view direction
 	interpolatedVert.viewDirection = Vector3{ m_Camera.origin ,Vector3{interpolatedVert.position} };
+	interpolatedVert.viewDirection.Normalize();
 
 	return interpolatedVert;
 }
