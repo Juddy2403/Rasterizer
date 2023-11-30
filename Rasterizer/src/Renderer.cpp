@@ -18,44 +18,10 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	meshes_world
 	{
 		Mesh{
-				{
-				/*Vertex{ Vector3{-3,3,-2}, Vector2{0,0}},
-				Vertex{ Vector3{0,3,-2}, Vector2{0.5f,0}},
-				Vertex{ Vector3{3,3,-2}, Vector2{1,0}},
-				Vertex{ Vector3{-3,0,-2}, Vector2{0,0.5f}},
-				Vertex{ Vector3{0,0,-2}, Vector2{0.5f,0.5f}},
-				Vertex{ Vector3{3,0,-2}, Vector2{1,0.5f}},
-				Vertex{ Vector3{-3,-3,-2}, Vector2{0,1}},
-				Vertex{ Vector3{0,-3,-2}, Vector2{0.5f,1}},
-				Vertex{ Vector3{3,-3,-2}, Vector2{1,1}},*/
-				},
-				{
-					/*3,0,1,  1,4,3,  4,1,2,
-					2,5,4,  6,3,4,  4,7,6,
-					7,4,5,  5,8,7*/
-
-					/*3,0,4,1,5,2,
-					2,6,
-					6,3,7,4,8,5*/
-				},
+				{},
+				{},
 			PrimitiveTopology::TriangleList
 			}
-	//Mesh{
-	//		{
-	//		//Triangle 1
-	//			Vertex{Vector3{0.f,2.f,0.f},ColorRGB{1,0,0}},
-	//			Vertex{Vector3{1.5f,-1.f,0.f },ColorRGB{1,0,0}},
-	//			Vertex{Vector3{-1.5f,-1.f,0.f },ColorRGB{1,0,0}},
-	//			//Triangle 2
-	//				Vertex{Vector3{0.f,4.f,2.f},ColorRGB{1,0,0}},
-	//				Vertex{Vector3{3.f,-2.f,2.f },ColorRGB{0,1,0}},
-	//				Vertex{Vector3{-3.f,-2.f,2.f },ColorRGB{0,0,1}}
-	//			},
-	//			{
-	//				0,1,2,  3,4,5
-	//			},
-	//		PrimitiveTopology::TriangleList
-	//		}
 	}
 {
 	//Initialize
@@ -83,10 +49,10 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	m_pDepthBufferPixels = new float[m_Width * m_Height];
 
 	//Initialize Camera
-	m_Camera.Initialize(45.f, { .0f,0.0f,0.f }, float(m_Width) / float(m_Height));
+	m_Camera.Initialize(45.f, { .0f,5.f,-64.f }, float(m_Width) / float(m_Height));
 
 	//Translate mesh
-	meshes_world[0].worldMatrix = meshes_world[0].translateMatrix = Matrix::CreateTranslation(0, 0, 50);
+	//meshes_world[0].worldMatrix = meshes_world[0].translateMatrix = Matrix::CreateTranslation(0, 0, 50);
 
 }
 
@@ -270,9 +236,10 @@ void Renderer::ToggleVisualMode()
 
 ColorRGB Renderer::PixelShading(const Vertex_Out& v)
 {
-	Vector3 lightDirection = { .577f, -.577f, .577f };
+	Vector3 lightDirection = { .577f, -.577f, -.577f };
 	const float lightIntensity{ 7.f };
-	const ColorRGB ambientOcclusion = { 0.025f, 0.025f,0.025f };
+	const ColorRGB lightColor{ 1,1,1 };
+	const ColorRGB ambientOcclusion = { 0.05f, 0.05f,0.05f };
 
 	Vector3 normal{ v.normal };
 

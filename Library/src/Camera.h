@@ -37,7 +37,7 @@ namespace dae
 		Matrix projectionMatrix{};
 
 		const float near{ .1f };
-		const float far{ 1000.f };
+		const float far{ 100.f };
 		float aspectRatio{};
 
 		void Initialize(float _fovAngle = 90.f, Vector3 _origin = {0.f,0.f,0.f}, float _aspectRatio = 1.f)
