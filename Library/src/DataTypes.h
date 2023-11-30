@@ -1,6 +1,7 @@
 #pragma once
-#include "Maths.h"
+//#include "Maths.h"
 #include "vector"
+#include "Texture.h"
 
 namespace dae
 {
@@ -42,7 +43,7 @@ namespace dae
 		Vector2 uv{};
 		Vector3 normal{};
 		Vector3 tangent{};
-		//Vector3 viewDirection{};
+		Vector3 viewDirection{};
 	};
 
 	enum class PrimitiveTopology
@@ -58,10 +59,26 @@ namespace dae
 		std::vector<uint32_t> indices{};
 		PrimitiveTopology primitiveTopology{ PrimitiveTopology::TriangleStrip };
 
+		Texture* diffuseColor{};
+		Texture* normalMap{};
+		Texture* specularMap{};
+		Texture* glossinessMap{};
+
 		std::vector<Vertex_Out> vertices_out{};
 		Matrix worldMatrix{};
 
-		//std::vector<Vertex> transformed_vertices{};
+		float yaw{};
+		Matrix translateMatrix{};
+		Matrix rotationMatrix{};
+
 		std::vector<BoundingBox> bounding_boxes{};
+
+		void FreeTextures()
+		{
+			delete diffuseColor;
+			delete normalMap;
+			delete specularMap;
+			delete glossinessMap;
+		}
 	};
 }

@@ -6,7 +6,6 @@
 #include "Renderer.h"
 #include "Texture.h"
 #include "Utils.h"
-#include "Maths.h"
 //#include <algorithm>
 //#include <execution>
 //#include <iostream>
@@ -65,7 +64,10 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	try
 	{
 		//loading texture
-		m_pTexture = Texture::LoadFromFile("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/vehicle_diffuse.png");
+		meshes_world[0].diffuseColor = Texture::LoadFromFile("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/vehicle_diffuse.png");
+		meshes_world[0].normalMap = Texture::LoadFromFile("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/vehicle_normal.png");
+		meshes_world[0].specularMap = Texture::LoadFromFile("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/vehicle_specular.png");
+		meshes_world[0].glossinessMap = Texture::LoadFromFile("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/vehicle_gloss.png");
 	}
 	catch (const FileNotFound& ex) {
 		std::cout << "File not found \n";
@@ -81,29 +83,41 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	m_pDepthBufferPixels = new float[m_Width * m_Height];
 
 	//Initialize Camera
-	m_Camera.Initialize(60.f, { .0f,5.0f,-30.f }, float(m_Width) / float(m_Height));
+	m_Camera.Initialize(45.f, { .0f,0.0f,0.f }, float(m_Width) / float(m_Height));
+
+	//Translate mesh
+	meshes_world[0].worldMatrix = meshes_world[0].translateMatrix = Matrix::CreateTranslation(0, 0, 50);
 
 }
 
 Renderer::~Renderer()
 {
 	delete[] m_pDepthBufferPixels;
-	delete m_pTexture;
+
+	for (Mesh& mesh : meshes_world)
+		mesh.FreeTextures();
 }
 
 void Renderer::Update(Timer* pTimer)
 {
 	m_Camera.Update(pTimer);
-	//VertexTransformationFunction(meshes_world);
+
+	// Update vertices
 	for (Mesh& mesh : meshes_world)
 	{
 		VertexMatrixTransform(mesh);
 		TrianglesBoundingBox(mesh);
 	}
-	//Rotate Yaw
-	if(m_IsRotating)
-	meshes_world[0].worldMatrix = Matrix::CreateRotationY(PI_DIV_2 * pTimer->GetTotal());
 
+	if (m_IsRotating) RotateMesh(pTimer);
+
+}
+
+void dae::Renderer::RotateMesh(Timer* pTimer)
+{
+	meshes_world[0].yaw += pTimer->GetElapsed();
+	meshes_world[0].rotationMatrix = Matrix::CreateRotationY(meshes_world[0].yaw);
+	meshes_world[0].worldMatrix = meshes_world[0].rotationMatrix * meshes_world[0].translateMatrix;
 }
 
 void Renderer::Render()
@@ -206,7 +220,14 @@ void Renderer::Render()
 							if (m_pDepthBufferPixels[bufferIndex] > interpolatedVert.position.z && interpolatedVert.position.z > 0 && interpolatedVert.position.z < 1)
 							{
 								m_pDepthBufferPixels[bufferIndex] = interpolatedVert.position.z;
-								PixelShading(interpolatedVert, bufferIndex);
+								ColorRGB finalColor = PixelShading(interpolatedVert);
+
+								// Update Color in Buffer
+								finalColor.MaxToOne();
+								m_pBackBufferPixels[bufferIndex] = SDL_MapRGB(m_pBackBuffer->format,
+									static_cast<uint8_t>(finalColor.r * 255),
+									static_cast<uint8_t>(finalColor.g * 255),
+									static_cast<uint8_t>(finalColor.b * 255));
 							}
 						}
 					}
@@ -227,47 +248,109 @@ void Renderer::Render()
 
 void Renderer::ToggleVisualMode()
 {
-	m_VisualMode = VisualMode((int(m_VisualMode) + 1) % 3);
-}
-
-inline void Renderer::PixelShading(const Vertex_Out& v, const int bufferIdx)
-{
-	ColorRGB finalColor{};
-	Vector3 lightDirection = { -.577f, .577f, -.577f };
-	const float lightIntensity{ 7.f };
-	const float lightDirCos{ Vector3::Dot(v.normal,lightDirection) };
+	m_VisualMode = ShadingMode((static_cast<int>(m_VisualMode) + 1) % 4);
 	switch (m_VisualMode)
 	{
-	case VisualMode::finalColor:
-	{
-		finalColor = m_pTexture->Sample(v.uv);
-	}
-	break;
-	case VisualMode::depthBuffer:
-	{
-		const float minInterpolation{ 0.985f }, maxInterpolation{ 1.f };
-		float remappedDepthValue{ m_pDepthBufferPixels[bufferIdx] };
-		Remap(remappedDepthValue, minInterpolation, maxInterpolation, 0.f, .9f);
-		finalColor = ColorRGB{ remappedDepthValue,remappedDepthValue,remappedDepthValue };
-	}
-	break;
-	case VisualMode::BRDF:
-		if (lightDirCos >= 0)
-		{
-			const float kd{ 1 };
-			const ColorRGB cd{ m_pTexture->Sample(v.uv) };
-			const ColorRGB BRDF{ cd * kd / float(M_PI) };
-			finalColor = lightIntensity * BRDF * ColorRGB{ lightDirCos,lightDirCos,lightDirCos };
-		}
+	case dae::Renderer::ShadingMode::observedArea:
+		std::cout << "Shading mode: obeserved area \n";
+		break;
+	case dae::Renderer::ShadingMode::diffuse:
+		std::cout << "Shading mode: diffuse \n";
+		break;
+	case dae::Renderer::ShadingMode::specular:
+		std::cout << "Shading mode: specular \n";
+		break;
+	case dae::Renderer::ShadingMode::combined:
+		std::cout << "Shading mode: combined \n";
+		break;
+	default:
 		break;
 	}
+}
 
-	// Update Color in Buffer
-	finalColor.MaxToOne();
-	m_pBackBufferPixels[bufferIdx] = SDL_MapRGB(m_pBackBuffer->format,
-		static_cast<uint8_t>(finalColor.r * 255),
-		static_cast<uint8_t>(finalColor.g * 255),
-		static_cast<uint8_t>(finalColor.b * 255));
+ColorRGB Renderer::PixelShading(const Vertex_Out& v)
+{
+	Vector3 lightDirection = { .577f, -.577f, .577f };
+	const float lightIntensity{ 7.f };
+	const ColorRGB ambientOcclusion = { 0.025f, 0.025f,0.025f };
+
+	Vector3 normal{ v.normal };
+
+	if (m_IsNormalMapToggled)
+	{
+		ColorRGB normalMapSample{ meshes_world[0].normalMap->Sample(v.uv) };
+		// Remapping the value from [0,1] to [-1,1] (i am already remapping from [0,255] in the Sample function
+		normalMapSample = 2.f * normalMapSample - ColorRGB{ 1.f,1.f,1.f };
+
+		Vector3 sampledNormal{ Vector3{normalMapSample.r,normalMapSample.g,normalMapSample.b} };
+
+		// Transforming it in the correct tangent space
+		const Vector3 binormal{ Vector3::Cross(v.normal,v.tangent) };
+		Matrix tangentSpaceTransfMatrix{ v.tangent, binormal, v.normal,Vector3{0,0,0} };
+		sampledNormal = tangentSpaceTransfMatrix.TransformVector(sampledNormal);
+		normal = sampledNormal;
+	}
+
+	const float lightDirCos = Vector3::Dot(normal, -lightDirection);
+
+	if (lightDirCos >= 0)
+		switch (m_VisualMode)
+		{
+		case ShadingMode::observedArea:
+		{
+
+			return ColorRGB{ lightDirCos,lightDirCos,lightDirCos };
+
+			break;
+		}
+		case ShadingMode::diffuse:
+		{
+
+			const ColorRGB cd{ meshes_world[0].diffuseColor->Sample(v.uv) };
+			const ColorRGB BRDF{ Utils::Lambert( cd) };
+			return BRDF * lightDirCos * lightIntensity;
+
+			break;
+		}
+
+		case ShadingMode::specular:
+		{
+			// Sampling color from maps
+			const float glossinesMapSample{ meshes_world[0].glossinessMap->Sample(v.uv).r };
+			const float specularMapSample{ meshes_world[0].specularMap->Sample(v.uv).r };
+			const float shininess{ 25.f };
+			// SpecularColor sampled from SpecularMap and PhongExponent from GlossinessMap
+			const ColorRGB specular{ Utils::Phong(specularMapSample, glossinesMapSample * shininess, lightDirection, -v.viewDirection, normal) };
+
+			return specular * lightDirCos;
+			break;
+		}
+		case ShadingMode::combined:
+		{
+			// Sampling color from maps
+			const float glossinesMapSample{ meshes_world[0].glossinessMap->Sample(v.uv).r };
+			const float specularMapSample{ meshes_world[0].specularMap->Sample(v.uv).r };
+			const float shininess{ 25.f };
+			// SpecularColor sampled from SpecularMap and PhongExponent from GlossinessMap
+			const ColorRGB specular{ Utils::Phong(specularMapSample, glossinesMapSample * shininess, lightDirection, -v.viewDirection, normal) };
+			const ColorRGB cd{ meshes_world[0].diffuseColor->Sample(v.uv) };
+			const ColorRGB BRDF{ Utils::Lambert( cd) };
+			return ColorRGB{ lightDirCos  * (specular + BRDF * lightIntensity + ambientOcclusion) };
+
+			break;
+		}
+		//case ShadingMode::depthBuffer:
+		//{
+		//	const float minInterpolation{ 0.985f }, maxInterpolation{ 1.f };
+		//	float remappedDepthValue{ m_pDepthBufferPixels[bufferIdx] };
+		//	Remap(remappedDepthValue, minInterpolation, maxInterpolation, 0.f, .9f);
+		//	finalColor = ColorRGB{ remappedDepthValue,remappedDepthValue,remappedDepthValue };
+		//}
+		//break;
+
+		}
+	return ColorRGB{};
+
 }
 
 //void Renderer::NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
@@ -330,7 +413,10 @@ inline void Renderer::VertexMatrixTransform(Mesh& mesh) const noexcept
 		mesh.vertices_out[i].position = worldViewProjectionMatrix.TransformPoint(mesh.vertices_out[i].position);
 
 		//normals need to be multiplied with the world matrix only & no perspective divide for them
-		mesh.vertices_out[i].normal = mesh.worldMatrix.TransformPoint(mesh.vertices_out[i].normal);
+		mesh.vertices_out[i].normal = mesh.worldMatrix.TransformVector(mesh.vertices_out[i].normal);
+
+		//same for tangents
+		mesh.vertices_out[i].tangent = mesh.worldMatrix.TransformVector(mesh.vertices_out[i].tangent);
 
 		//NDC transformation/ Perspective divide
 		mesh.vertices_out[i].position.x /= mesh.vertices_out[i].position.w;
@@ -390,6 +476,11 @@ bool Renderer::SaveBufferToImage() const
 void dae::Renderer::ToggleRotation()
 {
 	m_IsRotating = !m_IsRotating;
+}
+
+void dae::Renderer::ToggleNormals()
+{
+	m_IsNormalMapToggled = !m_IsNormalMapToggled;
 }
 
 inline bool Renderer::TriangleHitTest(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2, const Vector2& pixelVector) noexcept
@@ -452,6 +543,9 @@ inline Vertex_Out& Renderer::InterpolatedVertex(const Vertex_Out& v0, const Vert
 
 	// Calculate interpolated tangent
 	interpolatedVert.tangent = (v0.tangent * W0 * recipW0 + v1.tangent * W1 * recipW1 + v2.tangent * W2 * recipW2) * interpolatedVert.position.w;
+
+	// Calculate interpolated view direction
+	interpolatedVert.viewDirection = Vector3{ m_Camera.origin ,Vector3{interpolatedVert.position} };
 
 	return interpolatedVert;
 }

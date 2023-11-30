@@ -36,6 +36,7 @@ namespace dae
 		void ToggleVisualMode();
 		bool SaveBufferToImage() const;
 		void ToggleRotation();
+		void ToggleNormals();
 		
 
 	private:
@@ -46,14 +47,14 @@ namespace dae
 		SDL_Surface* m_pBackBuffer{ nullptr };
 		uint32_t* m_pBackBufferPixels{};
 		float* m_pDepthBufferPixels{};
-		const Texture* m_pTexture;
 
-		enum class VisualMode {
-			finalColor,
-			depthBuffer,
-			BRDF
+		enum class ShadingMode {
+			observedArea,
+			diffuse,
+			specular,
+			combined
 		};
-		VisualMode m_VisualMode{ VisualMode::BRDF };
+		ShadingMode m_VisualMode{ ShadingMode::combined };
 		
 		std::vector<Mesh> meshes_world;
 #if defined(MULTI_THREADING)
@@ -65,6 +66,7 @@ namespace dae
 		int m_Height{};
 		float m_Cross0{}, m_Cross1{}, m_Cross2{};
 		bool m_IsRotating{ true };
+		bool m_IsNormalMapToggled{ true };
 
 		//void VertexTransformationFunction( std::vector<Mesh>& meshes) const;
 		inline void VertexMatrixTransform(Mesh& mesh) const noexcept;
@@ -72,7 +74,8 @@ namespace dae
 		//void NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
 		inline bool TriangleHitTest(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2, const Vector2& pixelVector) noexcept;
 		inline Vertex_Out& InterpolatedVertex(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2, const Vector2& pixelVector);
-		inline void PixelShading(const Vertex_Out& v, const int bufferIdx);
+		ColorRGB PixelShading(const Vertex_Out& v);
+		void RotateMesh(Timer* pTimer);
 	};
 	
 
