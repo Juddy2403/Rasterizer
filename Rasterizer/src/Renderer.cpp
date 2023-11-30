@@ -251,16 +251,16 @@ void Renderer::ToggleVisualMode()
 	m_VisualMode = ShadingMode((static_cast<int>(m_VisualMode) + 1) % 4);
 	switch (m_VisualMode)
 	{
-	case dae::Renderer::ShadingMode::observedArea:
+	case ShadingMode::observedArea:
 		std::cout << "Shading mode: obeserved area \n";
 		break;
-	case dae::Renderer::ShadingMode::diffuse:
+	case ShadingMode::diffuse:
 		std::cout << "Shading mode: diffuse \n";
 		break;
-	case dae::Renderer::ShadingMode::specular:
+	case ShadingMode::specular:
 		std::cout << "Shading mode: specular \n";
 		break;
-	case dae::Renderer::ShadingMode::combined:
+	case ShadingMode::combined:
 		std::cout << "Shading mode: combined \n";
 		break;
 	default:
@@ -298,18 +298,14 @@ ColorRGB Renderer::PixelShading(const Vertex_Out& v)
 		{
 		case ShadingMode::observedArea:
 		{
-
 			return ColorRGB{ lightDirCos,lightDirCos,lightDirCos };
-
 			break;
 		}
 		case ShadingMode::diffuse:
 		{
-
 			const ColorRGB cd{ meshes_world[0].diffuseColor->Sample(v.uv) };
 			const ColorRGB BRDF{ Utils::Lambert( cd) };
 			return BRDF * lightDirCos * lightIntensity;
-
 			break;
 		}
 
@@ -321,7 +317,6 @@ ColorRGB Renderer::PixelShading(const Vertex_Out& v)
 			const float shininess{ 25.f };
 			// SpecularColor sampled from SpecularMap and PhongExponent from GlossinessMap
 			const ColorRGB specular{ Utils::Phong(specularMapSample, glossinesMapSample * shininess, lightDirection, -v.viewDirection, normal) };
-
 			return specular * lightDirCos;
 			break;
 		}
@@ -336,7 +331,6 @@ ColorRGB Renderer::PixelShading(const Vertex_Out& v)
 			const ColorRGB cd{ meshes_world[0].diffuseColor->Sample(v.uv) };
 			const ColorRGB BRDF{ Utils::Lambert( cd) };
 			return ColorRGB{ lightDirCos  * (specular + BRDF * lightIntensity + ambientOcclusion) };
-
 			break;
 		}
 		//case ShadingMode::depthBuffer:
@@ -347,55 +341,10 @@ ColorRGB Renderer::PixelShading(const Vertex_Out& v)
 		//	finalColor = ColorRGB{ remappedDepthValue,remappedDepthValue,remappedDepthValue };
 		//}
 		//break;
-
 		}
 	return ColorRGB{};
 
 }
-
-//void Renderer::NDCToRaster(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
-//{
-//	vertices_out.reserve(vertices_in.size());
-//	for (size_t i = 0; i < vertices_in.size(); i++)
-//	{
-//		vertices_out.push_back(vertices_in[i]);
-//		const float vertX{ (vertices_in[i].position.x + 1) / 2.f * m_Width };
-//		const float vertY{ (1 - vertices_in[i].position.y) / 2.f * m_Height };
-//		vertices_out[i].position.x = vertX;
-//		vertices_out[i].position.y = vertY;
-//	}
-//}
-
-//void Renderer::VertexTransformationFunction(std::vector<Mesh>& meshes) const
-//{
-//	//Projection Stage
-//	for (Mesh& mesh : meshes)
-//	{
-//		mesh.transformed_vertices.reserve(mesh.vertices.size());
-//
-//		for (size_t i = 0; i < mesh.vertices.size(); i++)
-//		{
-//			mesh.transformed_vertices.push_back(mesh.vertices[i]);
-//
-//			//pos to view space
-//			mesh.transformed_vertices[i].position = m_Camera.invViewMatrix.TransformPoint(mesh.vertices[i].position);
-//
-//			//projecting view space
-//			mesh.transformed_vertices[i].position.x /= mesh.transformed_vertices[i].position.z;
-//			mesh.transformed_vertices[i].position.y /= mesh.transformed_vertices[i].position.z;
-//
-//			//applying camera settings
-//			mesh.transformed_vertices[i].position.x /= (m_AspectRatio * m_Camera.fov);
-//			mesh.transformed_vertices[i].position.y /= m_Camera.fov;
-//
-//			//NDC transformation
-//			const float vertX{ (mesh.transformed_vertices[i].position.x + 1) / 2.f * m_Width };
-//			const float vertY{ (1 - mesh.transformed_vertices[i].position.y) / 2.f * m_Height };
-//			mesh.transformed_vertices[i].position.x = vertX;
-//			mesh.transformed_vertices[i].position.y = vertY;
-//		}
-//	}
-//}
 
 inline void Renderer::VertexMatrixTransform(Mesh& mesh) const noexcept
 {
@@ -459,10 +408,10 @@ inline void Renderer::TrianglesBoundingBox(Mesh& mesh) const noexcept
 		if (minX < 0 || minY < 0 || maxX > m_Width || maxY > m_Height)
 			isOutOfScreen = true;
 		// if statement of std::clamp from C++ 20
-		Remap(minX, 0, m_Width);
-		Remap(maxX, 0, m_Width);
-		Remap(minY, 0, m_Height);
-		Remap(maxY, 0, m_Height);
+		Clamp(minX, 0, m_Width);
+		Clamp(maxX, 0, m_Width);
+		Clamp(minY, 0, m_Height);
+		Clamp(maxY, 0, m_Height);
 		mesh.bounding_boxes.push_back(BoundingBox{ minX,maxX,minY,maxY });
 		mesh.bounding_boxes[i].isOutOfScreen = isOutOfScreen;
 	}
@@ -505,6 +454,7 @@ inline bool Renderer::TriangleHitTest(const Vertex_Out& v0, const Vertex_Out& v1
 
 	return true;
 }
+
 inline Vertex_Out& Renderer::InterpolatedVertex(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2, const Vector2& pixelVector)
 {
 	Vertex_Out interpolatedVert{};
