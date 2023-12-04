@@ -1,10 +1,9 @@
 #pragma once
 #include <cassert>
 #include <fstream>
-#include "Maths.h"
 #include "DataTypes.h"
-#include <iostream>
 #include "Maths.h"
+
 //#define DISABLE_OBJ
 
 namespace dae

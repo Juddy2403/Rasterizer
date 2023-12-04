@@ -8,7 +8,7 @@
 #include "Utils.h"
 //#include <algorithm>
 //#include <execution>
-//#include <iostream>
+#include <iostream>
 
 using namespace dae;
 
@@ -93,9 +93,9 @@ void Renderer::Render()
 
 	//color the screen
 	SDL_FillRect(m_pBackBuffer, NULL, SDL_MapRGB(m_pBackBuffer->format,
-		static_cast<uint8_t>(100.f * 255),
-		static_cast<uint8_t>(100.f * 255),
-		static_cast<uint8_t>(100.f * 255))
+		static_cast<uint8_t>(0.4f * 255),
+		static_cast<uint8_t>(0.4f * 255),
+		static_cast<uint8_t>(0.4f * 255))
 	);
 
 	//RENDER LOGIC
@@ -241,7 +241,7 @@ void Renderer::ToggleVisualMode()
 
 ColorRGB Renderer::PixelShading(const Vertex_Out& v)
 {
-	Vector3 lightDirection = { .577f, -.577f, .577f };
+	const Vector3 lightDirection = { .577f, -.577f, .577f };
 	const float lightIntensity{ 7.f };
 	const ColorRGB ambientOcclusion = { 0.05f, 0.05f,0.05f };
 	const ColorRGB lightColor = { 1,1,1 };
@@ -271,14 +271,12 @@ ColorRGB Renderer::PixelShading(const Vertex_Out& v)
 		case ShadingMode::observedArea:
 		{
 			return ColorRGB{ lightDirCos,lightDirCos,lightDirCos };
-			break;
 		}
 		case ShadingMode::diffuse:
 		{
 			const ColorRGB cd{ meshes_world[0].diffuseColor->Sample(v.uv) };
 			const ColorRGB diffuse{ Utils::Lambert(cd) };
 			return diffuse * lightDirCos * lightIntensity;
-			break;
 		}
 
 		case ShadingMode::specular:
@@ -290,7 +288,6 @@ ColorRGB Renderer::PixelShading(const Vertex_Out& v)
 			// SpecularColor sampled from SpecularMap and PhongExponent from GlossinessMap
 			const ColorRGB specular{ Utils::Phong(specularMapSample, glossinesMapSample * shininess, lightDirection, -v.viewDirection, normal) };
 			return specular;
-			break;
 		}
 		case ShadingMode::combined:
 		{
@@ -304,12 +301,10 @@ ColorRGB Renderer::PixelShading(const Vertex_Out& v)
 			const ColorRGB diffuse{ Utils::Lambert( cd) };
 			//return ColorRGB{ lightDirCos  * (specular + diffuse * lightIntensity + ambientOcclusion) };
 			return ColorRGB{ lightColor * (lightDirCos * diffuse * lightIntensity + specular + ambientOcclusion) };
-			break;
 		}
-	
 		}
-	return ColorRGB{};
 
+	return ColorRGB{};
 }
 
 inline void Renderer::VertexMatrixTransform(Mesh& mesh) const noexcept
