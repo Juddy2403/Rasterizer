@@ -26,10 +26,10 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	try
 	{
 		//loading texture
-		meshes_world[0].diffuseColor = Texture::LoadFromFile("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/vehicle_diffuse.png");
-		meshes_world[0].normalMap = Texture::LoadFromFile("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/vehicle_normal.png");
-		meshes_world[0].specularMap = Texture::LoadFromFile("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/vehicle_specular.png");
-		meshes_world[0].glossinessMap = Texture::LoadFromFile("D:/Howest/Sem 3/GP1-Rasterizer/Rasterizer/Rasterizer/Resources/vehicle_gloss.png");
+		meshes_world[0].diffuseColor = Texture::LoadFromFile("Resources/vehicle_diffuse.png");
+		meshes_world[0].normalMap = Texture::LoadFromFile("Resources/vehicle_normal.png");
+		meshes_world[0].specularMap = Texture::LoadFromFile("Resources/vehicle_specular.png");
+		meshes_world[0].glossinessMap = Texture::LoadFromFile("Resources/vehicle_gloss.png");
 	}
 	catch (const FileNotFound& ex) {
 		std::cout << "File not found \n";
@@ -243,8 +243,7 @@ ColorRGB Renderer::PixelShading(const Vertex_Out& v)
 {
 	const Vector3 lightDirection = { .577f, -.577f, .577f };
 	const float lightIntensity{ 7.f };
-	const ColorRGB ambientOcclusion = { 0.05f, 0.05f,0.05f };
-	const ColorRGB lightColor = { 1,1,1 };
+	const ColorRGB ambientOcclusion = { 0.03f, 0.03f,0.03f };
 
 	Vector3 normal{ v.normal };
 
@@ -275,8 +274,8 @@ ColorRGB Renderer::PixelShading(const Vertex_Out& v)
 		case ShadingMode::diffuse:
 		{
 			const ColorRGB cd{ meshes_world[0].diffuseColor->Sample(v.uv) };
-			const ColorRGB diffuse{ Utils::Lambert(cd) };
-			return diffuse * lightDirCos * lightIntensity;
+			const ColorRGB diffuse{ Utils::Lambert(cd,lightIntensity) };
+			return diffuse * lightDirCos ;
 		}
 
 		case ShadingMode::specular:
@@ -298,9 +297,9 @@ ColorRGB Renderer::PixelShading(const Vertex_Out& v)
 			// SpecularColor sampled from SpecularMap and PhongExponent from GlossinessMap
 			const ColorRGB specular{ Utils::Phong(specularMapSample, glossinesMapSample * shininess, lightDirection, -v.viewDirection, normal) };
 			const ColorRGB cd{ meshes_world[0].diffuseColor->Sample(v.uv) };
-			const ColorRGB diffuse{ Utils::Lambert( cd) };
+			const ColorRGB diffuse{ Utils::Lambert( cd,lightIntensity) };
 			//return ColorRGB{ lightDirCos  * (specular + diffuse * lightIntensity + ambientOcclusion) };
-			return ColorRGB{ lightColor * (lightDirCos * diffuse * lightIntensity + specular + ambientOcclusion) };
+			return ColorRGB{ lightDirCos * diffuse  + specular + ambientOcclusion };
 		}
 		}
 
